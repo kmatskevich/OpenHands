@@ -1,0 +1,183 @@
+# Layered Configuration System
+
+OpenHands uses a layered configuration system that allows for flexible configuration management with multiple sources and precedence levels.
+
+## Configuration Precedence
+
+The configuration system follows a strict precedence order (highest to lowest):
+
+1. **CLI Overrides** - Command-line arguments and programmatic overrides
+2. **Environment Variables** - Variables prefixed with `OPENHANDS_`
+3. **User Configuration** - `~/.openhands/config.toml` or custom config file
+4. **Default Configuration** - Built-in defaults
+
+## Configuration Sources
+
+### User Configuration File
+
+The primary configuration file is located at `~/.openhands/config.toml`. If it doesn't exist, it will be automatically created with default values when first accessed.
+
+Example configuration:
+```toml
+runtime = "docker"
+
+[llms.llm]
+model = "gpt-4"
+temperature = 0.7
+api_key = "your-api-key"
+
+[security]
+sandbox_mode = "strict"
+
+[agents.default]
+max_iterations = 100
+enable_browsing = true
+```
+
+### Environment Variables
+
+Environment variables prefixed with `OPENHANDS_` override user configuration:
+
+```bash
+export OPENHANDS_RUNTIME=local
+export OPENHANDS_LLMS_LLM_MODEL=gpt-3.5-turbo
+export OPENHANDS_LLMS_LLM_TEMPERATURE=0.8
+```
+
+### CLI Overrides
+
+Programmatic overrides have the highest precedence and are typically used by applications or scripts.
+
+## Hot vs Cold Configuration Keys
+
+Configuration keys are classified as either "hot" or "cold":
+
+### Cold Keys (Require Restart)
+- `runtime` - Runtime environment type
+- `sandbox.base_container_image` - Base Docker image
+- `sandbox.runtime_container_image` - Runtime Docker image
+- `sandbox.platform` - Platform architecture
+- `security.sandbox_mode` - Security sandbox mode
+- `llm.api_base` - LLM API base URL
+- `llm.base_url` - LLM base URL
+
+### Hot Keys (Applied Immediately)
+- `llms.llm.temperature` - LLM temperature setting
+- `llms.llm.top_p` - LLM top_p setting
+- `agents.default.max_iterations` - Maximum iterations
+- Most agent and LLM configuration options
+
+## CLI Commands
+
+The `openhands config` command provides comprehensive configuration management:
+
+### Show Configuration
+```bash
+# Show current configuration in JSON format
+openhands config show
+
+# Show with source information
+openhands config show --sources
+
+# Show in different formats
+openhands config show --format yaml
+openhands config show --format toml
+```
+
+### Get Configuration Value
+```bash
+# Get a specific configuration value
+openhands config get runtime
+openhands config get llms.llm.temperature
+```
+
+### Set Configuration Value
+```bash
+# Set a configuration value
+openhands config set llms.llm.temperature 0.8
+openhands config set runtime local
+
+# Automatic type conversion
+openhands config set agents.default.enable_browsing true
+```
+
+### Validate Configuration
+```bash
+# Validate current configuration
+openhands config validate
+
+# Validate a configuration file
+openhands config validate --file config.toml
+openhands config validate --file config.json
+openhands config validate --file config.yaml
+```
+
+### Configuration Diagnostics
+```bash
+# Get comprehensive diagnostics
+openhands config diagnostics
+```
+
+### Reset Configuration
+```bash
+# Reset to defaults (requires confirmation)
+openhands config reset --confirm
+```
+
+## Configuration Validation
+
+The system includes comprehensive validation:
+
+### LLM Configuration
+- Temperature must be between 0 and 2
+- top_p must be between 0 and 1
+- Timeout must be positive
+- Number of retries must be non-negative
+- API key warnings for commercial models
+
+### Runtime Configuration
+- Valid runtime types: docker, local, remote, e2b, modal
+- Security warnings for local runtime
+
+### Security Configuration
+- Valid sandbox modes: strict, permissive, disabled
+- Warnings for disabled security features
+
+### Deprecated Keys
+- Detection of deprecated configuration keys
+- Migration suggestions for outdated configuration
+
+## Best Practices
+
+1. **Use Environment Variables for Secrets**: Store API keys and sensitive data in environment variables rather than configuration files.
+
+2. **Validate Before Deployment**: Use `openhands config validate` to check configuration before deploying.
+
+3. **Monitor Diagnostics**: Regularly check `openhands config diagnostics` for configuration health.
+
+4. **Understand Hot vs Cold Keys**: Plan restarts when changing cold configuration keys.
+
+5. **Use Appropriate Runtime**: Choose the runtime that best fits your security and performance requirements.
+
+6. **Keep Configuration Minimal**: Only override defaults when necessary to reduce complexity.
+
+## Troubleshooting
+
+### Configuration Not Loading
+- Check file permissions on `~/.openhands/config.toml`
+- Verify TOML syntax with `openhands config validate --file ~/.openhands/config.toml`
+- Check for conflicting environment variables
+
+### Restart Required
+- Use `openhands config diagnostics` to see which keys require restart
+- Cold keys require application restart to take effect
+
+### Validation Errors
+- Run `openhands config validate` for detailed error messages
+- Check deprecated key warnings and migrate configuration
+- Verify value ranges and types match requirements
+
+### Environment Variable Issues
+- Ensure proper `OPENHANDS_` prefix
+- Use dot notation converted to underscores: `llms.llm.model` → `OPENHANDS_LLMS_LLM_MODEL`
+- Check `openhands config diagnostics` for environment analysis

@@ -164,7 +164,7 @@ def get_cli_parser() -> argparse.ArgumentParser:
     subparsers = parser.add_subparsers(
         dest='command',
         title='commands',
-        description='OpenHands supports two main commands:',
+        description='OpenHands supports these main commands:',
         metavar='COMMAND',
     )
 
@@ -202,6 +202,68 @@ def get_cli_parser() -> argparse.ArgumentParser:
         help='The conversation id to continue',
         type=str,
         default=None,
+    )
+
+    # Add 'config' subcommand
+    config_parser = subparsers.add_parser(
+        'config', help='Manage OpenHands configuration'
+    )
+    config_subparsers = config_parser.add_subparsers(
+        dest='config_command',
+        title='config commands',
+        description='Configuration management commands:',
+        metavar='CONFIG_COMMAND',
+    )
+
+    # config show
+    show_parser = config_subparsers.add_parser(
+        'show', help='Show current configuration'
+    )
+    show_parser.add_argument(
+        '--sources', action='store_true', help='Show configuration sources'
+    )
+    show_parser.add_argument(
+        '--format', choices=['json', 'yaml', 'toml'], default='yaml',
+        help='Output format (default: yaml)'
+    )
+
+    # config get
+    get_parser = config_subparsers.add_parser(
+        'get', help='Get a specific configuration value'
+    )
+    get_parser.add_argument('key', help='Configuration key (e.g., runtime, llm.model)')
+
+    # config set
+    set_parser = config_subparsers.add_parser(
+        'set', help='Set a configuration value'
+    )
+    set_parser.add_argument('key', help='Configuration key')
+    set_parser.add_argument('value', help='Configuration value')
+    set_parser.add_argument(
+        '--source', choices=['user', 'env'], default='user',
+        help='Configuration source to update (default: user)'
+    )
+
+    # config validate
+    validate_parser = config_subparsers.add_parser(
+        'validate', help='Validate configuration'
+    )
+    validate_parser.add_argument(
+        '--file', help='Validate a specific config file'
+    )
+
+    # config diagnostics
+    diagnostics_parser = config_subparsers.add_parser(
+        'diagnostics', help='Show configuration diagnostics'
+    )
+
+    # config reset
+    reset_parser = config_subparsers.add_parser(
+        'reset', help='Reset configuration to defaults'
+    )
+    reset_parser.add_argument(
+        '--confirm', action='store_true',
+        help='Confirm the reset operation'
     )
 
     return parser

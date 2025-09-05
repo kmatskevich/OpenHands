@@ -30,7 +30,7 @@ def main():
 
     # Special case: no subcommand provided, simulate "openhands cli"
     if len(sys.argv) == 1 or (
-        len(sys.argv) > 1 and sys.argv[1] not in ['cli', 'serve']
+        len(sys.argv) > 1 and sys.argv[1] not in ['cli', 'serve', 'config']
     ):
         # Inject 'cli' as default command
         sys.argv.insert(1, 'cli')
@@ -45,6 +45,9 @@ def main():
         launch_gui_server(mount_cwd=args.mount_cwd, gpu=args.gpu)
     elif args.command == 'cli' or args.command is None:
         run_cli_command(args)
+    elif args.command == 'config':
+        from openhands.cli.config_commands import handle_config_command
+        handle_config_command(args)
     else:
         parser.print_help()
         sys.exit(1)

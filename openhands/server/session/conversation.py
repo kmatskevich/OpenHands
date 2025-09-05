@@ -3,7 +3,7 @@ import asyncio
 from openhands.core.config import OpenHandsConfig
 from openhands.events.stream import EventStream
 from openhands.llm.llm_registry import LLMRegistry
-from openhands.runtime import get_runtime_cls
+from openhands.runtime import create_runtime_with_factory
 from openhands.runtime.base import Runtime
 from openhands.storage.files import FileStore
 from openhands.utils.async_utils import call_sync_from_async
@@ -37,17 +37,20 @@ class ServerConversation:
 
         if runtime:
             self._attach_to_existing = True
+            self.runtime = runtime
         else:
-            runtime_cls = get_runtime_cls(self.config.runtime)
-            runtime = runtime_cls(
-                llm_registry=LLMRegistry(self.config),
+            runtime = create_runtime_with_factory(
                 config=config,
                 event_stream=self.event_stream,
+                llm_registry=LLMRegistry(self.config),
                 sid=self.sid,
-                attach_to_existing=True,
-                headless_mode=False,
             )
-        self.runtime = runtime
+            # Set additional parameters for existing runtime behavior
+            if hasattr(runtime, 'attach_to_existing'):
+                runtime.attach_to_existing = True  # type: ignore[union-attr]
+            if hasattr(runtime, 'headless_mode'):
+                runtime.headless_mode = False  # type: ignore[union-attr]
+            self.runtime = runtime  # type: ignore[assignment]
 
     @property
     def security_analyzer(self):

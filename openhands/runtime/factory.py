@@ -33,6 +33,11 @@ class RuntimeFactory:
             cls._instance = super().__new__(cls)
         return cls._instance
 
+    @classmethod
+    def get_instance(cls) -> 'RuntimeFactory':
+        """Get the singleton factory instance."""
+        return cls()
+
     def create_runtime(
         self,
         config: OpenHandsConfig,
@@ -74,7 +79,16 @@ class RuntimeFactory:
 
         # Get runtime class based on configuration
         runtime_name = self._get_runtime_name(config)
-        runtime_cls = get_runtime_cls(runtime_name)
+
+        # Use enhanced LocalRuntime for local runtime
+        if runtime_name == 'local':
+            from openhands.runtime.impl.local.enhanced_local_runtime import (
+                EnhancedLocalRuntime,
+            )
+
+            runtime_cls = EnhancedLocalRuntime  # type: ignore[assignment]
+        else:
+            runtime_cls = get_runtime_cls(runtime_name)  # type: ignore[assignment]
 
         logger.info(f'Creating {runtime_name} runtime for session {sid}')
 

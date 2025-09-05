@@ -103,6 +103,29 @@ def get_runtime_cls(name: str) -> type[Runtime]:
         ) from e
 
 
+def create_runtime_with_factory(
+    config, event_stream, llm_registry, sid: str = 'default'
+):
+    """Create a runtime instance using the RuntimeFactory.
+
+    This is the preferred way to create runtime instances as it provides
+    configuration validation, caching, and enhanced runtime features.
+
+    Args:
+        config: OpenHandsConfig instance
+        event_stream: Event stream for the runtime
+        llm_registry: LLM registry instance
+        sid: Session ID for the runtime
+
+    Returns:
+        Runtime instance
+    """
+    from openhands.runtime.factory import RuntimeFactory
+
+    factory = RuntimeFactory.get_instance()
+    return factory.create_runtime(config, event_stream, llm_registry, sid)
+
+
 # Build __all__ list dynamically based on available runtimes
 __all__ = [
     'Runtime',
@@ -112,6 +135,7 @@ __all__ = [
     'CLIRuntime',
     'LocalRuntime',
     'get_runtime_cls',
+    'create_runtime_with_factory',
 ]
 
 # Add third-party runtimes to __all__ if they're available

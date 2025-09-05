@@ -74,6 +74,7 @@ async def authentication_error_handler(request: Request, exc: AuthenticationErro
 
 
 app.include_router(public_api_router)
+app.include_router(config_api_router)
 app.include_router(files_api_router)
 app.include_router(security_api_router)
 app.include_router(feedback_api_router)

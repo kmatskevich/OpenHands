@@ -21,7 +21,20 @@ Before using the Local Runtime, ensure that:
 
 ## Configuration
 
-To use the Local Runtime, besides required configurations like the LLM provider, model and API key, you'll need to set
+There are two ways to configure the Local Runtime:
+
+### 1. Through the Web Interface
+
+The easiest way to enable Local Runtime is through the OpenHands web interface:
+
+1. **Start Screen**: When you open OpenHands, if the runtime is set to "local", you'll see a "Select project folder" section instead of the repository connector.
+2. **Settings Page**: Go to Settings → Runtime and change the environment to "local".
+3. **Project Selection**: Use the folder picker to select your project directory, or enter the absolute path manually.
+4. **Restart**: After changing runtime settings, you'll need to restart OpenHands for the changes to take effect.
+
+### 2. Through Configuration Files
+
+To use the Local Runtime via configuration, besides required configurations like the LLM provider, model and API key, you'll need to set
 the following options via environment variables or the [config.toml file](https://github.com/All-Hands-AI/OpenHands/blob/main/config.template.toml) when starting OpenHands:
 
 Via environment variables (please use PowerShell syntax for Windows PowerShell):
@@ -52,6 +65,49 @@ volumes = "/path/to/your/workspace:/workspace:rw"
 
 If `SANDBOX_VOLUMES` is not set, the runtime will create a temporary directory for the agent to work in.
 
+## Docker Mounting Requirements
+
+When running OpenHands in Docker and using Local Runtime, you must ensure that your project directories are properly mounted into the Docker container. This is crucial for the agent to access your local files.
+
+### Common Mounting Patterns
+
+For **macOS and Linux**:
+```bash
+# Mount your home directory
+docker run -v /Users:/host/Users openhands/openhands
+
+# Mount a specific project directory
+docker run -v /path/to/project:/workspace openhands/openhands
+```
+
+For **Windows**:
+```bash
+# Mount your C: drive
+docker run -v C:\:/host/C openhands/openhands
+
+# Mount a specific project directory
+docker run -v C:\path\to\project:/workspace openhands/openhands
+```
+
+### Path Validation
+
+When you select a project folder through the UI, OpenHands will validate that:
+
+1. The path exists and is accessible
+2. The path is properly mounted in the Docker container (if running in Docker)
+3. The agent has read/write permissions to the directory
+
+If validation fails, you'll see specific error messages with guidance on how to fix the mounting configuration.
+
+### Troubleshooting Mount Issues
+
+If you see errors about unmounted paths:
+
+1. **Check your Docker run command**: Ensure you're mounting the parent directory of your project
+2. **Use absolute paths**: Always use full absolute paths when mounting volumes
+3. **Verify permissions**: Ensure the mounted directory has appropriate read/write permissions
+4. **Restart required**: After changing mount configurations, restart the Docker container
+
 ## Example Usage
 
 Here's an example of how to start OpenHands with the Local Runtime in Headless Mode:
@@ -63,6 +119,34 @@ export SANDBOX_VOLUMES=/my_folder/myproject:/workspace:rw
 poetry run python -m openhands.core.main -t "write a bash script that prints hi"
 ```
 
+## Restart Instructions
+
+When you change runtime configuration (especially switching between Docker and Local runtime), OpenHands requires a restart to apply the changes.
+
+### Docker Compose
+If you're using Docker Compose:
+```bash
+docker compose restart openhands
+```
+
+### Docker Run
+If you're using `docker run`:
+```bash
+# Stop the container
+docker stop <container-name>
+
+# Start it again with the same parameters
+docker run [your-original-parameters] openhands/openhands
+```
+
+### Development Mode
+If you're running OpenHands in development mode:
+```bash
+# Stop the current process (Ctrl+C)
+# Then restart with:
+make run
+```
+
 ## Use Cases
 
 The Local Runtime is particularly useful for:
@@ -70,3 +154,5 @@ The Local Runtime is particularly useful for:
 - CI/CD pipelines where Docker is not available.
 - Testing and development of OpenHands itself.
 - Environments where container usage is restricted (e.g. native Windows).
+- Direct file system access without Docker overhead.
+- Working with large datasets that are already on your local machine.

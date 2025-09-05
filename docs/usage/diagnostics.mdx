@@ -1,0 +1,206 @@
+---
+title: System Diagnostics
+description: Understanding and using OpenHands system diagnostics
+---
+
+# System Diagnostics
+
+OpenHands provides comprehensive system diagnostics to help you understand your setup, troubleshoot issues, and optimize your configuration. The diagnostics system is available through both the web interface and command line.
+
+## Accessing Diagnostics
+
+### Web Interface
+
+Navigate to the diagnostics page in your OpenHands web interface:
+- **OSS Mode**: Available in the settings navigation menu
+- **SaaS Mode**: Available in the settings navigation menu
+- **Direct URL**: `/diagnostics`
+
+### Command Line Interface
+
+Use the `openhands diagnose` command to get diagnostics information:
+
+```bash
+# Human-readable output
+openhands diagnose
+
+# JSON output for scripting
+openhands diagnose --json
+
+# Verbose output with additional details
+openhands diagnose --verbose
+```
+
+## Diagnostics Sections
+
+### Runtime Information
+
+Shows your current runtime configuration and status:
+
+- **Runtime Type**: `local`, `docker`, `e2b`, `modal`, or `remote`
+- **Restart Required**: Whether configuration changes require a restart
+- **Status**: Current operational status
+
+**Common Issues:**
+- If restart is required, you'll see specific restart commands for your runtime type
+- Docker users get copyable `docker compose restart` commands
+- Local users get guidance on restarting the process
+
+### Path Information
+
+Displays important file system paths:
+
+- **Config File**: Location of your OpenHands configuration file
+- **Project Root**: Root directory of your current project
+- **Workspace Base**: Base directory for workspace operations
+- **Workspace Mount**: Docker mount path (Docker runtime only)
+
+**Troubleshooting:**
+- Missing config file indicates default settings are being used
+- Incorrect workspace paths can cause file access issues
+- All paths are copyable for easy reference
+
+### Project Memory
+
+Shows the status of your project memory system:
+
+- **Status**: Connected or Not Available
+- **Backend**: Database backend type (usually SQLite)
+- **Database Path**: Location of the memory database
+- **Events Count**: Number of stored conversation events
+- **Files Indexed**: Number of files in the memory index
+- **Last Event**: Timestamp of the most recent event
+
+**Understanding Project Memory:**
+- Only available in local runtime mode
+- Provides context awareness across conversations
+- Higher event/file counts indicate more comprehensive memory
+- Database path shows where conversation history is stored
+
+### Validation Results
+
+Reports configuration validation status:
+
+- **Errors**: Critical issues that may prevent proper operation
+- **Warnings**: Non-critical issues or recommendations
+- **Status Badges**: Visual indicators (OK, Warning, Error)
+
+**Common Validation Issues:**
+- Missing required configuration values
+- Invalid file paths or permissions
+- Deprecated configuration options
+- Network connectivity problems
+
+### Environment Variables
+
+Lists OpenHands-specific environment variable overrides:
+
+- **Status**: Shows if any overrides are detected
+- **Override List**: All `OPENHANDS_*` environment variables
+- **Security**: Variable values are masked for security
+
+**Environment Override Examples:**
+- `OPENHANDS_RUNTIME`: Override default runtime
+- `OPENHANDS_LLM_MODEL`: Override default model
+- `OPENHANDS_WORKSPACE_BASE`: Override workspace location
+
+### Version Information
+
+Displays version and build information:
+
+- **App Version**: OpenHands application version
+- **Git SHA**: Commit hash of current build
+- **Git Branch**: Source branch of current build
+
+**Version Troubleshooting:**
+- Missing git information indicates a release build
+- Development builds show commit details
+- Version mismatches can cause compatibility issues
+
+## Status Indicators
+
+The diagnostics system uses color-coded status badges:
+
+- 🟢 **OK (Green)**: Everything is working correctly
+- 🟡 **Warning (Yellow)**: Non-critical issues or recommendations
+- 🔴 **Error (Red)**: Critical issues requiring attention
+
+## Restart Guidance
+
+When configuration changes require a restart, the diagnostics page provides:
+
+### Docker Runtime
+```bash
+docker compose restart openhands
+```
+
+### Local Runtime
+Stop the current process and restart OpenHands with your usual command.
+
+### Other Runtimes
+Restart method depends on how OpenHands was initially started.
+
+## Using Diagnostics for Troubleshooting
+
+### Performance Issues
+1. Check **Project Memory** section for database size
+2. Review **Environment Variables** for performance-related overrides
+3. Verify **Runtime Information** for optimal configuration
+
+### Configuration Problems
+1. Review **Validation Results** for errors and warnings
+2. Check **Path Information** for correct file locations
+3. Examine **Environment Variables** for conflicting settings
+
+### Connection Issues
+1. Verify **Runtime Information** shows correct type
+2. Check **Path Information** for accessible directories
+3. Review **Project Memory** connection status
+
+### Before Reporting Issues
+When reporting problems, include:
+1. Full diagnostics output (`openhands diagnose --json`)
+2. Specific error messages from validation section
+3. Runtime type and version information
+4. Environment variable overrides (values will be masked)
+
+## API Integration
+
+Developers can access diagnostics programmatically:
+
+```bash
+# Get diagnostics via API
+curl http://localhost:3000/api/diagnostics
+```
+
+The API returns structured JSON with all diagnostic information, suitable for:
+- Automated monitoring
+- Integration with external tools
+- Custom diagnostic scripts
+- Health checks
+
+## Privacy and Security
+
+The diagnostics system is designed with privacy in mind:
+- Environment variable values are never displayed
+- Only variable names are shown for `OPENHANDS_*` variables
+- File paths are shown but file contents are never accessed
+- No sensitive configuration values are exposed
+
+## Limitations
+
+- Project Memory diagnostics only available in local runtime
+- Git information requires git to be installed and accessible
+- Some path information may not be available in containerized environments
+- Network-related diagnostics are limited to basic connectivity
+
+## Getting Help
+
+If diagnostics reveal issues you can't resolve:
+
+1. Check the [Troubleshooting Guide](/usage/troubleshooting) for common solutions
+2. Review the [Configuration Options](/usage/configuration-options) documentation
+3. Visit our [GitHub Issues](https://github.com/All-Hands-AI/OpenHands/issues) for community support
+4. Include your diagnostics output when asking for help
+
+The diagnostics system is continuously improved based on user feedback and common support requests.

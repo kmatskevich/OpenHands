@@ -162,3 +162,29 @@ export type GetFilesResponse = string[];
 export interface GetFileResponse {
   code: string;
 }
+
+export interface DiagnosticsResponse {
+  status: string;
+  sections: {
+    system_info: {
+      status: string;
+      data: Record<string, any>;
+    };
+    environment_info: {
+      status: string;
+      data: Record<string, any>;
+    };
+    versions_info: {
+      status: string;
+      data: Record<string, any>;
+    };
+    memory_info: {
+      status: string;
+      data: Record<string, any>;
+    };
+    config_validation: {
+      status: string;
+      data: Record<string, any>;
+    };
+  };
+}

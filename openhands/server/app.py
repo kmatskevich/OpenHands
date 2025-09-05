@@ -19,6 +19,7 @@ from openhands import __version__
 from openhands.integrations.service_types import AuthenticationError
 from openhands.server.routes.config import app as config_api_router
 from openhands.server.routes.conversation import app as conversation_api_router
+from openhands.server.routes.diagnostics import app as diagnostics_api_router
 from openhands.server.routes.feedback import app as feedback_api_router
 from openhands.server.routes.files import app as files_api_router
 from openhands.server.routes.git import app as git_api_router
@@ -75,6 +76,7 @@ async def authentication_error_handler(request: Request, exc: AuthenticationErro
 
 app.include_router(public_api_router)
 app.include_router(config_api_router)
+app.include_router(diagnostics_api_router)
 app.include_router(files_api_router)
 app.include_router(security_api_router)
 app.include_router(feedback_api_router)
@@ -82,7 +84,6 @@ app.include_router(conversation_api_router)
 app.include_router(manage_conversation_api_router)
 app.include_router(settings_router)
 app.include_router(secrets_router)
-app.include_router(config_api_router)
 if server_config.app_mode == AppMode.OSS:
     app.include_router(git_api_router)
 app.include_router(trajectory_router)

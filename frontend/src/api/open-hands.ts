@@ -142,12 +142,8 @@ class OpenHands {
    * Get system diagnostics
    * @returns Diagnostics information
    */
-  static async getDiagnostics(): Promise<{
-    runtime: Record<string, unknown>;
-    config: Record<string, unknown>;
-    system: Record<string, unknown>;
-  }> {
-    const { data } = await openHands.get("/api/config/diagnostics");
+  static async getDiagnostics(): Promise<DiagnosticsResponse> {
+    const { data } = await openHands.get("/api/diagnostics");
     return data;
   }
 

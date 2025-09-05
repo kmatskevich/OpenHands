@@ -92,7 +92,7 @@ def handle_config_get(args) -> None:
         if isinstance(value, dict):
             print(yaml.dump(value, default_flow_style=False))
         else:
-            print(value)
+            print(value)  # type: ignore[unreachable]
     except (KeyError, TypeError):
         print(f'Error: Configuration key "{args.key}" not found')
         sys.exit(1)

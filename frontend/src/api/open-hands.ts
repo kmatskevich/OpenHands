@@ -18,6 +18,7 @@ import {
   FileUploadSuccessResponse,
   GetFilesResponse,
   GetFileResponse,
+  DiagnosticsResponse,
 } from "./open-hands.types";
 import { openHands } from "./open-hands-axios";
 import { ApiSettings, PostApiSettings, Provider } from "#/types/settings";
@@ -142,12 +143,8 @@ class OpenHands {
    * Get system diagnostics
    * @returns Diagnostics information
    */
-  static async getDiagnostics(): Promise<{
-    runtime: any;
-    config: any;
-    system: any;
-  }> {
-    const { data } = await openHands.get("/api/config/diagnostics");
+  static async getDiagnostics(): Promise<DiagnosticsResponse> {
+    const { data } = await openHands.get("/api/diagnostics");
     return data;
   }
 

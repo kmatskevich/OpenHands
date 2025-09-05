@@ -28,5 +28,6 @@ export default [
       route("vscode", "routes/vscode-tab.tsx"),
     ]),
     route("microagent-management", "routes/microagent-management.tsx"),
+    route("diagnostics", "routes/diagnostics.tsx"),
   ]),
 ] satisfies RouteConfig;

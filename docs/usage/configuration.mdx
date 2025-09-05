@@ -1,0 +1,215 @@
+---
+title: Configuration
+description: Complete guide to OpenHands configuration system
+---
+
+# Configuration
+
+OpenHands uses a layered configuration system that allows you to customize behavior through multiple sources with clear precedence rules.
+
+## Configuration Precedence
+
+Configuration values are applied in the following order (highest to lowest priority):
+
+1. **CLI Arguments** - Command-line flags and options
+2. **Environment Variables** - System environment variables
+3. **User Configuration** - `~/.openhands/config.toml` file
+4. **Default Values** - Built-in defaults
+
+Later sources override earlier ones. For example, a CLI argument will override the same setting in your config file.
+
+## Configuration File
+
+OpenHands looks for configuration in `~/.openhands/config.toml`. If this file doesn't exist, OpenHands will create it with default values on first run.
+
+### Example Configuration
+
+```toml
+[core]
+workspace_base = "/tmp/workspace"
+persist_sandbox = false
+
+[llm]
+model = "anthropic/claude-3-5-sonnet-20241022"
+api_key = "your-api-key-here"
+base_url = "https://api.anthropic.com"
+
+[agent]
+name = "CodeActAgent"
+memory_enabled = true
+
+[security]
+security_analyzer = "default"
+confirmation_mode = false
+
+[runtime]
+runtime = "docker"
+container_image = "docker.all-hands.dev/all-hands-ai/runtime:0.55-nikolaik"
+use_host_network = false
+```
+
+## Hot vs Cold Configuration Keys
+
+Configuration keys are categorized as either "hot" (can be changed at runtime) or "cold" (require restart).
+
+### Hot Keys (No Restart Required)
+- `llm.model`
+- `llm.api_key`
+- `llm.base_url`
+- `agent.name`
+- `security.confirmation_mode`
+- Most LLM and agent settings
+
+### Cold Keys (Restart Required)
+- `runtime.runtime` - Switching between docker/local
+- `runtime.container_image` - Docker image changes
+- `runtime.use_host_network` - Network configuration
+- `core.workspace_base` - Workspace location
+- `core.persist_sandbox` - Sandbox persistence
+- `agent.memory_enabled` - Project memory system
+
+## Restart Behavior
+
+When you change a cold configuration key, OpenHands will show a restart notification. The `requiresRestart` flag in the configuration API indicates which settings need a restart.
+
+### How to Restart
+
+**Docker Mode:**
+```bash
+# Stop the container
+docker stop openhands-app
+
+# Restart with the same command you used initially
+docker run -it --rm --pull=always \
+    -e SANDBOX_RUNTIME_CONTAINER_IMAGE=docker.all-hands.dev/all-hands-ai/runtime:0.55-nikolaik \
+    -v /var/run/docker.sock:/var/run/docker.sock \
+    -v ~/.openhands:/.openhands \
+    -p 3000:3000 \
+    --add-host host.docker.internal:host-gateway \
+    --name openhands-app \
+    docker.all-hands.dev/all-hands-ai/openhands:0.55
+```
+
+**Local Mode:**
+```bash
+# Stop the current process (Ctrl+C)
+# Then restart
+uvx --python 3.12 --from openhands-ai openhands serve
+```
+
+## Environment Variables
+
+All configuration keys can be set via environment variables using the format `OPENHANDS_<SECTION>_<KEY>`:
+
+```bash
+export OPENHANDS_LLM_MODEL="anthropic/claude-3-5-sonnet-20241022"
+export OPENHANDS_LLM_API_KEY="your-api-key"
+export OPENHANDS_RUNTIME_RUNTIME="local"
+export OPENHANDS_AGENT_MEMORY_ENABLED="true"
+```
+
+## CLI Configuration
+
+Use the `openhands config` command to manage configuration:
+
+```bash
+# View current configuration
+openhands config show
+
+# Set a configuration value
+openhands config set llm.model "anthropic/claude-3-5-sonnet-20241022"
+
+# Get a specific value
+openhands config get llm.model
+
+# Reset to defaults
+openhands config reset
+```
+
+## Runtime-Specific Configuration
+
+### Docker Runtime
+
+```toml
+[runtime]
+runtime = "docker"
+container_image = "docker.all-hands.dev/all-hands-ai/runtime:0.55-nikolaik"
+use_host_network = false
+```
+
+### Local Runtime
+
+```toml
+[runtime]
+runtime = "local"
+
+[core]
+workspace_base = "/path/to/your/projects"
+```
+
+## Project Memory Configuration
+
+When using local runtime, OpenHands can maintain project-specific memory:
+
+```toml
+[agent]
+memory_enabled = true
+
+[core]
+workspace_base = "/path/to/your/projects"
+```
+
+This creates a SQLite database at `~/.openhands/project_memory.db` to store project context, file changes, and conversation history.
+
+## Diagnostics
+
+Use the diagnostics system to verify your configuration:
+
+```bash
+# Check configuration status
+openhands diagnose
+
+# Get detailed JSON output
+openhands diagnose --json
+
+# Verbose output with all details
+openhands diagnose --verbose
+```
+
+The diagnostics will show:
+- Configuration validation results
+- Runtime status and connectivity
+- LLM provider configuration
+- Project memory status
+- Environment information
+
+## Troubleshooting
+
+### Configuration Not Loading
+
+1. Check file location: `~/.openhands/config.toml`
+2. Verify TOML syntax with `openhands config show`
+3. Check file permissions
+4. Use `openhands diagnose` for detailed status
+
+### Restart Required Notifications
+
+If you see "Restart Required" notifications:
+
+1. Note which settings changed
+2. Save your work
+3. Follow the restart instructions for your mode
+4. Verify changes with `openhands diagnose`
+
+### Environment Variable Issues
+
+- Use `OPENHANDS_` prefix for all variables
+- Use uppercase with underscores: `OPENHANDS_LLM_API_KEY`
+- Check with `env | grep OPENHANDS`
+
+## Related Documentation
+
+- [Local Runtime Guide](./runtimes/local) - Local development setup
+- [Docker Runtime Guide](./runtimes/docker) - Docker configuration
+- [Project Memory](./project-memory) - Project context system
+- [Diagnostics](./diagnostics) - System troubleshooting

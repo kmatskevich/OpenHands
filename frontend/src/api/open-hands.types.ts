@@ -144,6 +144,24 @@ export interface GetMicroagentPromptResponse {
   prompt: string;
 }
 
+export interface DiagnosticsSection {
+  status: "ok" | "warning" | "error";
+  message: string;
+  details?: Record<string, unknown>;
+}
+
+export interface DiagnosticsResponse {
+  status: "ok" | "warning" | "error";
+  sections: {
+    environment: DiagnosticsSection;
+    configuration: DiagnosticsSection;
+    dependencies: DiagnosticsSection;
+    runtime: DiagnosticsSection;
+    llm: DiagnosticsSection;
+    memory: DiagnosticsSection;
+  };
+}
+
 export interface CreateMicroagent {
   repo: string;
   git_provider?: Provider;

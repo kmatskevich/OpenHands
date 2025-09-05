@@ -204,6 +204,24 @@ def get_cli_parser() -> argparse.ArgumentParser:
         default=None,
     )
 
+    # Add 'diagnose' subcommand
+    diagnose_parser = subparsers.add_parser(
+        'diagnose',
+        help='Run diagnostics to check OpenHands configuration and environment',
+    )
+    diagnose_parser.add_argument(
+        '--json',
+        help='Output diagnostics in JSON format',
+        action='store_true',
+        default=False,
+    )
+    diagnose_parser.add_argument(
+        '--verbose',
+        help='Show verbose diagnostics information',
+        action='store_true',
+        default=False,
+    )
+
     return parser
 
 

@@ -80,7 +80,7 @@ export function LocalProjectSelector({ onProjectSelection }: LocalProjectSelecto
       }
 
       onProjectSelection(path);
-      
+
       // Validate the configuration
       await validatePath(path);
     } catch (error) {
@@ -206,6 +206,19 @@ export function LocalProjectSelector({ onProjectSelection }: LocalProjectSelecto
         </div>
       )}
 
+      {/* Empty State */}
+      {!selectedPath && (
+        <div className="text-center py-8 px-4 bg-gray-800/50 border-2 border-dashed border-gray-600 rounded-lg">
+          <FaFolder className="mx-auto text-4xl text-gray-500 mb-4" />
+          <h3 className="text-lg font-medium text-gray-300 mb-2">
+            {t("HOME$NO_FOLDER_SELECTED")}
+          </h3>
+          <p className="text-sm text-gray-400 mb-4">
+            {t("HOME$NO_FOLDER_SELECTED_DESCRIPTION")}
+          </p>
+        </div>
+      )}
+
       {/* Folder Selection */}
       <div className="space-y-4">
         {/* Directory Picker Button */}
@@ -283,7 +296,7 @@ export function LocalProjectSelector({ onProjectSelection }: LocalProjectSelecto
         >
           {t("HOME$DIAGNOSE")}
         </button>
-        
+
         {selectedPath && validationErrors.length === 0 && (
           <button
             onClick={() => onProjectSelection(selectedPath)}
@@ -306,19 +319,19 @@ export function LocalProjectSelector({ onProjectSelection }: LocalProjectSelecto
               ×
             </button>
           </div>
-          
+
           <div className="space-y-3">
             <div>
               <h4 className="font-medium text-gray-300 mb-1">{t("HOME$RUNTIME_INFO")}</h4>
               <pre className="text-xs bg-black/30 p-2 rounded overflow-x-auto">
-                {JSON.stringify(diagnosticsMutation.data?.runtime || {}, null, 2)}
+                {JSON.stringify(diagnosticsMutation.data?.sections?.runtime || {}, null, 2)}
               </pre>
             </div>
-            
+
             <div>
               <h4 className="font-medium text-gray-300 mb-1">{t("HOME$CONFIG_INFO")}</h4>
               <pre className="text-xs bg-black/30 p-2 rounded overflow-x-auto">
-                {JSON.stringify(diagnosticsMutation.data?.config || {}, null, 2)}
+                {JSON.stringify(diagnosticsMutation.data?.sections?.configuration || {}, null, 2)}
               </pre>
             </div>
           </div>

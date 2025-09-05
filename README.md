@@ -100,11 +100,56 @@ docker run -it --rm --pull=always \
 > On a public network? See our [Hardened Docker Installation Guide](https://docs.all-hands.dev/usage/runtimes/docker#hardened-docker-installation)
 > to secure your deployment by restricting network binding and implementing additional security measures.
 
+## 🚀 Quick Start
+
+### Docker Mode (Recommended for most users)
+
+1. **Mount your config** (optional):
+   ```bash
+   mkdir -p ~/.openhands
+   # Create config.toml with your LLM settings (see Configuration docs)
+   ```
+
+2. **Start OpenHands**:
+   ```bash
+   docker run -it --rm --pull=always \
+       -e SANDBOX_RUNTIME_CONTAINER_IMAGE=docker.all-hands.dev/all-hands-ai/runtime:0.55-nikolaik \
+       -v /var/run/docker.sock:/var/run/docker.sock \
+       -v ~/.openhands:/.openhands \
+       -p 3000:3000 \
+       --add-host host.docker.internal:host-gateway \
+       --name openhands-app \
+       docker.all-hands.dev/all-hands-ai/openhands:0.55
+   ```
+
+3. **Connect to repository**: Open [http://localhost:3000](http://localhost:3000), configure your LLM, and connect to a GitHub repository.
+
+### Local Mode (For local project development)
+
+1. **Install and start**:
+   ```bash
+   uvx --python 3.12 --from openhands-ai openhands serve
+   ```
+
+2. **Switch to local runtime**: In the UI, go to Settings → Runtime → Select "Local"
+
+3. **Restart required**: Stop OpenHands and restart for runtime change to take effect
+
+4. **Select project folder**: Use the folder selector to choose your local project directory
+
+5. **Project memory**: OpenHands will automatically create a SQLite database to remember your project context
+
 ### Getting Started
 
 When you open the application, you'll be asked to choose an LLM provider and add an API key.
 [Anthropic's Claude Sonnet 4](https://www.anthropic.com/api) (`anthropic/claude-sonnet-4-20250514`)
 works best, but you have [many options](https://docs.all-hands.dev/usage/llms).
+
+**Helpful Resources:**
+- [Local Runtime Guide](https://docs.all-hands.dev/usage/runtimes/local) - Detailed local development setup
+- [Project Memory](https://docs.all-hands.dev/usage/project-memory) - How OpenHands remembers your project
+- [Diagnostics](https://docs.all-hands.dev/usage/diagnostics) - Troubleshoot your setup with `openhands diagnose`
+- [Configuration](https://docs.all-hands.dev/usage/configuration) - Complete configuration reference
 
 See the [Running OpenHands](https://docs.all-hands.dev/usage/installation) guide for
 system requirements and more information.

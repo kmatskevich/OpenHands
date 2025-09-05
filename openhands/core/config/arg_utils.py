@@ -147,17 +147,24 @@ def get_cli_parser() -> argparse.ArgumentParser:
     # Create a description with welcome message explaining available commands
     description = (
         'Welcome to OpenHands: Code Less, Make More\n\n'
-        'OpenHands supports two main commands:\n'
-        '  serve - Launch the OpenHands GUI server (web interface)\n'
-        '  cli   - Run OpenHands in CLI mode (terminal interface)\n\n'
-        'Running "openhands" without a command is the same as "openhands cli"'
+        'OpenHands supports four main commands:\n'
+        '  serve    - Launch the OpenHands GUI server (web interface)\n'
+        '  cli      - Run OpenHands in CLI mode (terminal interface)\n'
+        '  diagnose - Check configuration and troubleshoot issues\n'
+        '  config   - Manage configuration settings\n\n'
+        'Running "openhands" without a command is the same as "openhands cli"\n\n'
+        'Quick Examples:\n'
+        '  openhands serve                    # Start GUI server\n'
+        '  openhands cli -t "Fix the bug"    # Run CLI with task\n'
+        '  openhands diagnose --json         # Check system status\n'
+        '  openhands config show             # View configuration'
     )
 
     parser = argparse.ArgumentParser(
         description=description,
         prog='openhands',
         formatter_class=argparse.RawDescriptionHelpFormatter,  # Preserve formatting in description
-        epilog='For more information about a command, run: openhands COMMAND --help',
+        epilog='For more information about a command, run: openhands COMMAND --help\nDocumentation: https://docs.all-hands.dev',
     )
 
     # Create subparsers
@@ -208,18 +215,59 @@ def get_cli_parser() -> argparse.ArgumentParser:
     diagnose_parser = subparsers.add_parser(
         'diagnose',
         help='Run diagnostics to check OpenHands configuration and environment',
+        description=(
+            'Check OpenHands configuration, runtime status, and troubleshoot issues.\n\n'
+            'Examples:\n'
+            '  openhands diagnose              # Basic diagnostics\n'
+            '  openhands diagnose --json       # JSON output for scripts\n'
+            '  openhands diagnose --verbose    # Detailed information'
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     diagnose_parser.add_argument(
         '--json',
-        help='Output diagnostics in JSON format',
+        help='Output diagnostics in JSON format for scripting',
         action='store_true',
         default=False,
     )
     diagnose_parser.add_argument(
         '--verbose',
-        help='Show verbose diagnostics information',
+        help='Show verbose diagnostics with detailed information',
         action='store_true',
         default=False,
+    )
+
+    # Add 'config' subcommand (placeholder for future implementation)
+    config_parser = subparsers.add_parser(
+        'config',
+        help='Manage OpenHands configuration settings',
+        description=(
+            'Manage OpenHands configuration settings.\n\n'
+            'Examples:\n'
+            '  openhands config show                    # View current config\n'
+            '  openhands config set llm.model "anthropic/claude-3-5-sonnet-20241022"\n'
+            '  openhands config get llm.model          # Get specific value\n'
+            '  openhands config reset                   # Reset to defaults\n\n'
+            'Note: This command is planned for future implementation.\n'
+            'Currently, edit ~/.openhands/config.toml directly.'
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    config_parser.add_argument(
+        'action',
+        nargs='?',
+        choices=['show', 'set', 'get', 'reset'],
+        help='Configuration action to perform',
+    )
+    config_parser.add_argument(
+        'key',
+        nargs='?',
+        help='Configuration key (e.g., llm.model)',
+    )
+    config_parser.add_argument(
+        'value',
+        nargs='?',
+        help='Configuration value to set',
     )
 
     return parser

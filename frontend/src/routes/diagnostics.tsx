@@ -68,24 +68,33 @@ const InfoRow: React.FC<InfoRowProps> = ({ label, value, copyable = false }) => 
 };
 
 const RestartBanner: React.FC<{ runtimeKind: string }> = ({ runtimeKind }) => {
-  const getRestartCommand = () => {
+  const getRestartCommands = () => {
     switch (runtimeKind) {
       case "docker":
-        return "docker compose restart openhands";
+        return {
+          primary: "docker stop openhands-app",
+          secondary: "docker run -it --rm --pull=always -e SANDBOX_RUNTIME_CONTAINER_IMAGE=docker.all-hands.dev/all-hands-ai/runtime:0.55-nikolaik -v /var/run/docker.sock:/var/run/docker.sock -v ~/.openhands:/.openhands -p 3000:3000 --add-host host.docker.internal:host-gateway --name openhands-app docker.all-hands.dev/all-hands-ai/openhands:0.55",
+          description: "Stop the container and restart with the same command you used initially"
+        };
       case "local":
-        return "Stop the current process and run openhands again";
+        return {
+          primary: "uvx --python 3.12 --from openhands-ai openhands serve",
+          secondary: null,
+          description: "Stop the current process (Ctrl+C) and restart"
+        };
       default:
-        return "Restart method depends on how OpenHands was started";
+        return {
+          primary: "Restart method depends on how OpenHands was started",
+          secondary: null,
+          description: "Check your startup method and restart accordingly"
+        };
     }
   };
 
-  const command = getRestartCommand();
-  const isCommand = runtimeKind === "docker";
+  const commands = getRestartCommands();
 
-  const handleCopy = () => {
-    if (isCommand) {
-      navigator.clipboard.writeText(command);
-    }
+  const handleCopy = (text: string) => {
+    navigator.clipboard.writeText(text);
   };
 
   return (
@@ -96,27 +105,38 @@ const RestartBanner: React.FC<{ runtimeKind: string }> = ({ runtimeKind }) => {
             <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
           </svg>
         </div>
-        <div className="ml-3">
+        <div className="ml-3 flex-1">
           <h3 className="text-sm font-medium text-yellow-800">
             Restart Required
           </h3>
           <div className="mt-2 text-sm text-yellow-700">
-            <p>Configuration changes require a restart to take effect.</p>
-            <div className="mt-2 flex items-center space-x-2">
-              {isCommand ? (
-                <>
-                  <code className="bg-yellow-100 px-2 py-1 rounded text-xs">
-                    {command}
+            <p>{commands.description}</p>
+            <div className="mt-3 space-y-2">
+              <div className="flex items-center space-x-2">
+                <code className="bg-yellow-100 px-2 py-1 rounded text-xs flex-1 break-all">
+                  {commands.primary}
+                </code>
+                <button
+                  onClick={() => handleCopy(commands.primary)}
+                  className="text-yellow-800 hover:text-yellow-900 text-xs underline whitespace-nowrap"
+                  title="Copy to clipboard"
+                >
+                  Copy
+                </button>
+              </div>
+              {commands.secondary && (
+                <div className="flex items-center space-x-2">
+                  <code className="bg-yellow-100 px-2 py-1 rounded text-xs flex-1 break-all">
+                    {commands.secondary}
                   </code>
                   <button
-                    onClick={handleCopy}
-                    className="text-yellow-800 hover:text-yellow-900 text-xs underline"
+                    onClick={() => handleCopy(commands.secondary)}
+                    className="text-yellow-800 hover:text-yellow-900 text-xs underline whitespace-nowrap"
+                    title="Copy to clipboard"
                   >
                     Copy
                   </button>
-                </>
-              ) : (
-                <span className="text-xs">{command}</span>
+                </div>
               )}
             </div>
           </div>
@@ -304,7 +324,7 @@ export function DiagnosticsPage() {
             <div>
               <h4 className="text-sm font-medium text-red-800 mb-2">Errors:</h4>
               <ul className="space-y-1">
-                {diagnostics.validation.errors.map((error, index) => (
+                {diagnostics.validation.errors.map((error: string, index: number) => (
                   <li key={index} className="text-sm text-red-700 flex items-start">
                     <span className="text-red-500 mr-2">•</span>
                     {error}
@@ -318,7 +338,7 @@ export function DiagnosticsPage() {
             <div>
               <h4 className="text-sm font-medium text-yellow-800 mb-2">Warnings:</h4>
               <ul className="space-y-1">
-                {diagnostics.validation.warnings.map((warning, index) => (
+                {diagnostics.validation.warnings.map((warning: string, index: number) => (
                   <li key={index} className="text-sm text-yellow-700 flex items-start">
                     <span className="text-yellow-500 mr-2">•</span>
                     {warning}
@@ -348,7 +368,7 @@ export function DiagnosticsPage() {
             <div>
               <h4 className="text-sm font-medium text-gray-700 mb-2">Environment Overrides:</h4>
               <ul className="space-y-1">
-                {diagnostics.env.openhands_overrides.map((override, index) => (
+                {diagnostics.env.openhands_overrides.map((override: string, index: number) => (
                   <li key={index} className="text-sm text-gray-600 flex items-center">
                     <code className="bg-gray-100 px-2 py-1 rounded text-xs mr-2">
                       {override}

@@ -1,0 +1,275 @@
+"""Configuration management REST API endpoints."""
+
+from typing import Any, Dict, Optional
+
+from fastapi import APIRouter, HTTPException, status
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel
+
+from openhands.core import logger
+from openhands.core.config import (
+    get_config,
+    get_config_loader,
+    requires_restart,
+    reset_restart_flag,
+    update_config,
+)
+from openhands.server.dependencies import get_dependencies
+
+app = APIRouter(prefix='/api/config', dependencies=get_dependencies())
+
+
+class ConfigResponse(BaseModel):
+    """Response model for configuration data."""
+    
+    config: Dict[str, Any]
+    sources: Dict[str, Dict[str, Any]]
+    requires_restart: bool
+
+
+class ConfigUpdateRequest(BaseModel):
+    """Request model for configuration updates."""
+    
+    changes: Dict[str, Any]
+    source: str = 'user'
+
+
+class ConfigUpdateResponse(BaseModel):
+    """Response model for configuration updates."""
+    
+    success: bool
+    requires_restart: bool
+    message: str
+
+
+class ConfigValidationResponse(BaseModel):
+    """Response model for configuration validation."""
+    
+    valid: bool
+    errors: list[str]
+    warnings: list[str]
+
+
+class ConfigDiagnosticsResponse(BaseModel):
+    """Response model for configuration diagnostics."""
+    
+    config_path: Optional[str]
+    sources: Dict[str, Dict[str, Any]]
+    cold_keys: list[str]
+    hot_keys: list[str]
+    requires_restart: bool
+    environment_overrides: Dict[str, Any]
+    cli_overrides: Dict[str, Any]
+
+
+@app.get(
+    '/',
+    response_model=ConfigResponse,
+    responses={
+        500: {'description': 'Error loading configuration', 'model': dict},
+    },
+)
+async def get_configuration() -> ConfigResponse | JSONResponse:
+    """Get the current configuration from all sources."""
+    try:
+        loader = get_config_loader()
+        config = get_config()
+        
+        # Convert config to dictionary for JSON serialization
+        config_dict = config.model_dump()
+        
+        return ConfigResponse(
+            config=config_dict,
+            sources=loader.get_source_info(),
+            requires_restart=requires_restart(),
+        )
+    except Exception as e:
+        logger.openhands_logger.error(f'Error loading configuration: {e}')
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={'error': f'Error loading configuration: {str(e)}'},
+        )
+
+
+@app.post(
+    '/update',
+    response_model=ConfigUpdateResponse,
+    responses={
+        400: {'description': 'Invalid configuration data', 'model': dict},
+        500: {'description': 'Error updating configuration', 'model': dict},
+    },
+)
+async def update_configuration(
+    request: ConfigUpdateRequest,
+) -> ConfigUpdateResponse | JSONResponse:
+    """Update configuration with new values."""
+    try:
+        # Validate source parameter
+        valid_sources = ['user', 'env', 'cli']
+        if request.source not in valid_sources:
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content={
+                    'error': f'Invalid source. Must be one of: {valid_sources}'
+                },
+            )
+        
+        # Update configuration
+        needs_restart = update_config(request.changes, request.source)
+        
+        message = 'Configuration updated successfully'
+        if needs_restart:
+            message += '. Restart required for changes to take effect.'
+        
+        return ConfigUpdateResponse(
+            success=True,
+            requires_restart=needs_restart,
+            message=message,
+        )
+    except ValueError as e:
+        logger.openhands_logger.warning(f'Invalid configuration data: {e}')
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={'error': f'Invalid configuration data: {str(e)}'},
+        )
+    except Exception as e:
+        logger.openhands_logger.error(f'Error updating configuration: {e}')
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={'error': f'Error updating configuration: {str(e)}'},
+        )
+
+
+@app.post(
+    '/validate',
+    response_model=ConfigValidationResponse,
+    responses={
+        500: {'description': 'Error validating configuration', 'model': dict},
+    },
+)
+async def validate_configuration(
+    config_data: Dict[str, Any],
+) -> ConfigValidationResponse | JSONResponse:
+    """Validate configuration data without applying it."""
+    try:
+        from openhands.core.config.openhands_config import OpenHandsConfig
+        
+        errors = []
+        warnings = []
+        
+        try:
+            # Try to create a config object with the provided data
+            OpenHandsConfig(**config_data)
+        except Exception as e:
+            errors.append(str(e))
+        
+        # Additional validation logic can be added here
+        # For example, checking for deprecated keys, invalid combinations, etc.
+        
+        return ConfigValidationResponse(
+            valid=len(errors) == 0,
+            errors=errors,
+            warnings=warnings,
+        )
+    except Exception as e:
+        logger.openhands_logger.error(f'Error validating configuration: {e}')
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={'error': f'Error validating configuration: {str(e)}'},
+        )
+
+
+@app.get(
+    '/diagnostics',
+    response_model=ConfigDiagnosticsResponse,
+    responses={
+        500: {'description': 'Error getting configuration diagnostics', 'model': dict},
+    },
+)
+async def get_configuration_diagnostics() -> ConfigDiagnosticsResponse | JSONResponse:
+    """Get detailed configuration diagnostics and metadata."""
+    try:
+        loader = get_config_loader()
+        
+        # Get all cold keys
+        cold_keys = list(loader.COLD_KEYS)
+        
+        # Get hot keys (all config keys that are not cold)
+        config = get_config()
+        all_keys = set()
+        
+        def collect_keys(data: Dict[str, Any], prefix: str = '') -> None:
+            for key, value in data.items():
+                full_key = f"{prefix}.{key}" if prefix else key
+                all_keys.add(full_key)
+                if isinstance(value, dict):
+                    collect_keys(value, full_key)
+        
+        collect_keys(config.model_dump())
+        hot_keys = [key for key in all_keys if not loader.is_cold_key(key)]
+        
+        return ConfigDiagnosticsResponse(
+            config_path=loader.get_user_config_path_resolved(),
+            sources=loader.get_source_info(),
+            cold_keys=cold_keys,
+            hot_keys=hot_keys,
+            requires_restart=requires_restart(),
+            environment_overrides=loader._env_overrides,
+            cli_overrides=loader._cli_overrides,
+        )
+    except Exception as e:
+        logger.openhands_logger.error(f'Error getting configuration diagnostics: {e}')
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={'error': f'Error getting configuration diagnostics: {str(e)}'},
+        )
+
+
+@app.post(
+    '/reset-restart-flag',
+    response_model=dict,
+    responses={
+        200: {'description': 'Restart flag reset successfully', 'model': dict},
+        500: {'description': 'Error resetting restart flag', 'model': dict},
+    },
+)
+async def reset_restart_flag_endpoint() -> JSONResponse:
+    """Reset the requires restart flag (call after restart)."""
+    try:
+        reset_restart_flag()
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content={'message': 'Restart flag reset successfully'},
+        )
+    except Exception as e:
+        logger.openhands_logger.error(f'Error resetting restart flag: {e}')
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={'error': f'Error resetting restart flag: {str(e)}'},
+        )
+
+
+@app.get(
+    '/schema',
+    response_model=dict,
+    responses={
+        500: {'description': 'Error getting configuration schema', 'model': dict},
+    },
+)
+async def get_configuration_schema() -> JSONResponse:
+    """Get the configuration schema for validation and documentation."""
+    try:
+        from openhands.core.config.openhands_config import OpenHandsConfig
+        
+        schema = OpenHandsConfig.model_json_schema()
+        
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content=schema,
+        )
+    except Exception as e:
+        logger.openhands_logger.error(f'Error getting configuration schema: {e}')
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={'error': f'Error getting configuration schema: {str(e)}'},
+        )

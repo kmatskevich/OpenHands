@@ -102,6 +102,55 @@ class OpenHands {
     return data;
   }
 
+  /**
+   * Get the full configuration including runtime settings
+   * @returns Full configuration object
+   */
+  static async getFullConfig(): Promise<any> {
+    const { data } = await openHands.get("/api/config");
+    return data;
+  }
+
+  /**
+   * Update configuration settings
+   * @param config Configuration updates
+   * @returns Update response with restart requirement
+   */
+  static async updateConfig(config: any): Promise<{
+    success: boolean;
+    requires_restart: boolean;
+    message: string;
+  }> {
+    const { data } = await openHands.post("/api/config/update", config);
+    return data;
+  }
+
+  /**
+   * Validate current configuration
+   * @returns Validation results
+   */
+  static async validateConfig(): Promise<{
+    valid: boolean;
+    errors: string[];
+    warnings: string[];
+  }> {
+    const { data } = await openHands.post("/api/config/validate");
+    return data;
+  }
+
+  /**
+   * Get system diagnostics
+   * @returns Diagnostics information
+   */
+  static async getDiagnostics(): Promise<{
+    runtime: any;
+    config: any;
+    system: any;
+  }> {
+    const { data } = await openHands.get("/api/config/diagnostics");
+    return data;
+  }
+
   static getConversationHeaders(): AxiosHeaders {
     const headers = new AxiosHeaders();
     const sessionApiKey = this.currentConversation?.session_api_key;

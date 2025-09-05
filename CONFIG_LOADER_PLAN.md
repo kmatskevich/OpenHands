@@ -1,45 +1,57 @@
-# Config Loader Plan
+# Config Loader — Minimal Plan
 
-## Configuration Precedence Order
+## Scope
 
-Configuration values are loaded in the following order (later sources override earlier ones):
+Introduce a layered configuration loader and key classification to support switching runtime between docker and local, while keeping most settings hot-reloadable. Target platforms: macOS/Linux only (no Windows support).
 
-1. **Default values** - Built-in defaults in code
-2. **User config file** - `~/.openhands/config.toml`
-3. **Environment variables** - `OPENHANDS_*` prefixed env vars
-4. **CLI arguments** - Command-line flags and options
+## Precedence (highest wins)
 
-## Configuration Key Classification
+1. **CLI overrides** (explicit flags/options)
+2. **Environment variables** (OPENHANDS_*)
+3. **User config** — ~/.openhands/config.toml (or path from OPENHANDS_CONFIG)
+4. **Default config** — baked into the image/binary (default.toml)
 
-### Cold Keys (Require Restart)
+### Notes:
+- On startup, if ~/.openhands/config.toml is missing, create the directory and copy a template user config there, then continue boot.
+- In Docker, user config should be bind-mounted (host ~/.openhands/config.toml → container path), but loader logic is identical.
 
-These configuration changes require a full application restart to take effect:
+## Key classification
 
-- `runtime.environment` - Runtime environment type (local, docker, remote, etc.)
-- `runtime.base_image` - Docker base image for runtime
-- `runtime.platform` - Target platform architecture
-- `security.sandbox_mode` - Security sandbox configuration
-- `llm.api_base` - LLM API endpoint base URL
-- `server.port` - Server listening port
-- `server.host` - Server bind address
+### Cold keys (require agent restart after change)
+- `runtime.environment` (docker | local)
+- Any key that changes the runtime implementation, process model, container mounts, or core dependency wiring; initial set:
+- `runtime.local.project_root`
+- `runtime.docker.*` (if present, e.g., image, container name, mount roots)
+- Low-level service wiring toggles (e.g., switching major backends)
 
-### Hot Keys (Reloadable)
+**Behavior:**
+- When a cold key is changed (via CLI/REST/ENV), the system records "Needs restart" and surfaces a clear banner/message; running services do not hot-swap.
 
-These configuration changes can be applied without restart:
+### Hot keys (reloadable without restart)
+- Logging: log.level, log.format
+- Timeouts/retry/backoff values not tied to runtime initialization
+- Feature toggles that alter analysis behavior only (enable/disable steps, thresholds)
+- Memory/telemetry toggles that don't change storage backend type
+- UI preferences
 
-- `llm.model` - Active LLM model selection
-- `llm.temperature` - LLM temperature parameter
-- `llm.max_tokens` - Maximum tokens per request
-- `agent.memory_enabled` - Agent memory feature toggle
-- `agent.max_iterations` - Maximum agent iterations
-- `ui.theme` - UI theme selection
-- `ui.language` - Interface language
-- `logging.level` - Log level configuration
-- `workspace.mount_path` - Workspace mount directory
+**Behavior:**
+- On change, emit a "config reloaded" event and notify subscribed components to re-read their section.
 
-## Implementation Notes
+## Change application model
+- Provide a single "Apply config change" path (CLI/REST).
+- After apply:
+  - If only hot keys changed → hot-reload and return requiresRestart=false.
+  - If any cold key changed → persist change, return requiresRestart=true with guidance to restart the agent/container.
 
-- Cold key changes should trigger a warning/confirmation dialog
-- Hot key changes should be applied immediately with visual feedback
-- Configuration validation should occur at load time for all keys
-- Runtime environment changes require graceful shutdown and restart sequence
+## Validation
+- Validate presence and readability of runtime.local.project_root only when runtime.environment=local.
+- Fail fast with actionable error if required values are missing or paths are inaccessible.
+
+## Observability
+- diagnose output must include: active runtime, resolved user-config path, whether a restart is required, and any validation errors.
+
+## Acceptance criteria
+- Loader respects the precedence order above.
+- First run creates ~/.openhands/config.toml from template when missing.
+- Changing runtime.environment sets requiresRestart=true; other listed hot keys reload in place.
+- diagnose exposes runtime, config source paths, and restart status.

@@ -17,6 +17,7 @@ import toml
 
 from openhands.core import logger
 from openhands.core.config.openhands_config import OpenHandsConfig
+from openhands.core.config.validation import ConfigDiagnostics, ConfigValidator
 
 
 class ConfigSource:
@@ -408,6 +409,26 @@ enable_cmd = true
     def reset_restart_flag(self) -> None:
         """Reset the requires restart flag (call after restart)."""
         self._requires_restart = False
+    
+    def validate_config(self, config_data: Optional[dict] = None) -> tuple[bool, list[str], list[str]]:
+        """Validate configuration data.
+        
+        Args:
+            config_data: Configuration data to validate. If None, validates current config.
+            
+        Returns:
+            Tuple of (is_valid, errors, warnings)
+        """
+        if config_data is None:
+            config_data = self.get_config().model_dump()
+        
+        validator = ConfigValidator()
+        return validator.validate(config_data)
+    
+    def get_diagnostics(self) -> dict[str, Any]:
+        """Get comprehensive configuration diagnostics."""
+        diagnostics = ConfigDiagnostics(self)
+        return diagnostics.run_diagnostics()
 
     def get_source_info(self) -> dict[str, dict[str, Any]]:
         """Get information about configuration sources."""

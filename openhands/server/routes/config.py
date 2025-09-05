@@ -152,22 +152,11 @@ async def validate_configuration(
 ) -> ConfigValidationResponse | JSONResponse:
     """Validate configuration data without applying it."""
     try:
-        from openhands.core.config.openhands_config import OpenHandsConfig
-        
-        errors = []
-        warnings = []
-        
-        try:
-            # Try to create a config object with the provided data
-            OpenHandsConfig(**config_data)
-        except Exception as e:
-            errors.append(str(e))
-        
-        # Additional validation logic can be added here
-        # For example, checking for deprecated keys, invalid combinations, etc.
+        loader = get_config_loader()
+        is_valid, errors, warnings = loader.validate_config(config_data)
         
         return ConfigValidationResponse(
-            valid=len(errors) == 0,
+            valid=is_valid,
             errors=errors,
             warnings=warnings,
         )
@@ -181,41 +170,20 @@ async def validate_configuration(
 
 @app.get(
     '/diagnostics',
-    response_model=ConfigDiagnosticsResponse,
+    response_model=dict,
     responses={
         500: {'description': 'Error getting configuration diagnostics', 'model': dict},
     },
 )
-async def get_configuration_diagnostics() -> ConfigDiagnosticsResponse | JSONResponse:
+async def get_configuration_diagnostics() -> JSONResponse:
     """Get detailed configuration diagnostics and metadata."""
     try:
         loader = get_config_loader()
+        diagnostics = loader.get_diagnostics()
         
-        # Get all cold keys
-        cold_keys = list(loader.COLD_KEYS)
-        
-        # Get hot keys (all config keys that are not cold)
-        config = get_config()
-        all_keys = set()
-        
-        def collect_keys(data: Dict[str, Any], prefix: str = '') -> None:
-            for key, value in data.items():
-                full_key = f"{prefix}.{key}" if prefix else key
-                all_keys.add(full_key)
-                if isinstance(value, dict):
-                    collect_keys(value, full_key)
-        
-        collect_keys(config.model_dump())
-        hot_keys = [key for key in all_keys if not loader.is_cold_key(key)]
-        
-        return ConfigDiagnosticsResponse(
-            config_path=loader.get_user_config_path_resolved(),
-            sources=loader.get_source_info(),
-            cold_keys=cold_keys,
-            hot_keys=hot_keys,
-            requires_restart=requires_restart(),
-            environment_overrides=loader._env_overrides,
-            cli_overrides=loader._cli_overrides,
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content=diagnostics,
         )
     except Exception as e:
         logger.openhands_logger.error(f'Error getting configuration diagnostics: {e}')

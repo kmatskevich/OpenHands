@@ -147,12 +147,25 @@ def handle_config_validate(args) -> None:
                     print('Error: Unsupported file format. Use .toml, .yaml, .yml, or .json')
                     sys.exit(1)
             
-            # Validate the configuration
-            try:
-                OpenHandsConfig(**config_data)
+            # Validate the configuration using enhanced validation
+            loader = get_config_loader()
+            is_valid, errors, warnings = loader.validate_config(config_data)
+            
+            if is_valid:
                 print(f'✅ Configuration file {args.file} is valid')
-            except Exception as e:
-                print(f'❌ Configuration file {args.file} is invalid: {e}')
+                if warnings:
+                    print('\nWarnings:')
+                    for warning in warnings:
+                        print(f'  ⚠️  {warning}')
+            else:
+                print(f'❌ Configuration file {args.file} is invalid')
+                print('\nErrors:')
+                for error in errors:
+                    print(f'  ❌ {error}')
+                if warnings:
+                    print('\nWarnings:')
+                    for warning in warnings:
+                        print(f'  ⚠️  {warning}')
                 sys.exit(1)
         
         except Exception as e:
@@ -161,73 +174,95 @@ def handle_config_validate(args) -> None:
     else:
         # Validate current configuration
         try:
-            config = get_config()
-            print('✅ Current configuration is valid')
+            loader = get_config_loader()
+            is_valid, errors, warnings = loader.validate_config()
+            
+            if is_valid:
+                print('✅ Current configuration is valid')
+                if warnings:
+                    print('\nWarnings:')
+                    for warning in warnings:
+                        print(f'  ⚠️  {warning}')
+            else:
+                print('❌ Current configuration is invalid')
+                print('\nErrors:')
+                for error in errors:
+                    print(f'  ❌ {error}')
+                if warnings:
+                    print('\nWarnings:')
+                    for warning in warnings:
+                        print(f'  ⚠️  {warning}')
+                sys.exit(1)
             
             # Check for restart requirements
             if requires_restart():
                 print('⚠️  Configuration changes require restart')
         except Exception as e:
-            print(f'❌ Current configuration is invalid: {e}')
+            print(f'❌ Error validating configuration: {e}')
             sys.exit(1)
 
 
 def handle_config_diagnostics(args) -> None:
     """Show configuration diagnostics."""
     loader = get_config_loader()
-    config = get_config()
-    
-    # Get all cold keys
-    cold_keys = list(loader.COLD_KEYS)
-    
-    # Get hot keys (all config keys that are not cold)
-    all_keys = set()
-    
-    def collect_keys(data: Dict[str, Any], prefix: str = '') -> None:
-        for key, value in data.items():
-            full_key = f"{prefix}.{key}" if prefix else key
-            all_keys.add(full_key)
-            if isinstance(value, dict):
-                collect_keys(value, full_key)
-    
-    collect_keys(config.model_dump())
-    hot_keys = [key for key in all_keys if not loader.is_cold_key(key)]
-    
-    diagnostics = {
-        'config_path': loader.get_user_config_path_resolved(),
-        'sources': loader.get_source_info(),
-        'cold_keys': cold_keys,
-        'hot_keys': hot_keys,
-        'requires_restart': requires_restart(),
-        'environment_overrides': loader._env_overrides,
-        'cli_overrides': loader._cli_overrides,
-    }
+    diagnostics = loader.get_diagnostics()
     
     print('Configuration Diagnostics')
     print('=' * 50)
-    print(f'User config path: {diagnostics["config_path"]}')
-    print(f'Requires restart: {diagnostics["requires_restart"]}')
+    
+    # Config health
+    health = diagnostics['config_health']
+    status_icon = '✅' if health['status'] == 'healthy' else '❌'
+    print(f'Overall Status: {status_icon} {health["status"].title()}')
+    print(f'Requires restart: {health["requires_restart"]}')
     print()
     
+    # Show errors and warnings
+    if health['errors']:
+        print('❌ Configuration Errors:')
+        for error in health['errors']:
+            print(f'  • {error}')
+        print()
+    
+    if health['warnings']:
+        print('⚠️  Configuration Warnings:')
+        for warning in health['warnings']:
+            print(f'  • {warning}')
+        print()
+    
+    # Source analysis
     print('Configuration Sources:')
-    for name, info in diagnostics['sources'].items():
-        status = '✅' if info['loaded'] else '❌'
+    for name, info in diagnostics['source_analysis'].items():
+        status = '✅' if info['status'] == 'active' else '❌'
         print(f'  {status} {name}: {info["keys_count"]} keys')
         if info['path']:
             print(f'      Path: {info["path"]}')
     print()
     
-    if diagnostics['environment_overrides']:
-        print('Environment Overrides:')
-        for key, value in diagnostics['environment_overrides'].items():
+    # Environment analysis
+    env_analysis = diagnostics['environment_analysis']
+    if env_analysis['openhands_env_vars']:
+        print('Environment Variables:')
+        for key, value in env_analysis['openhands_env_vars'].items():
             print(f'  OPENHANDS_{key.upper()}: {value}')
         print()
     
-    if diagnostics['cli_overrides']:
-        print('CLI Overrides:')
-        for key, value in diagnostics['cli_overrides'].items():
+    if env_analysis['env_overrides']:
+        print('Environment Overrides:')
+        for key, value in env_analysis['env_overrides'].items():
             print(f'  {key}: {value}')
         print()
+    
+    if env_analysis['cli_overrides']:
+        print('CLI Overrides:')
+        for key, value in env_analysis['cli_overrides'].items():
+            print(f'  {key}: {value}')
+        print()
+    
+    # Key analysis
+    key_analysis = diagnostics['key_analysis']
+    cold_keys = key_analysis['cold_keys']['keys']
+    hot_keys = key_analysis['hot_keys']['keys']
     
     print(f'Cold Keys ({len(cold_keys)} total - require restart):')
     for key in sorted(cold_keys):
@@ -239,6 +274,15 @@ def handle_config_diagnostics(args) -> None:
         print(f'  • {key}')
     if len(hot_keys) > 10:
         print(f'  ... and {len(hot_keys) - 10} more')
+    print()
+    
+    # Recommendations
+    recommendations = diagnostics['recommendations']
+    if recommendations:
+        print('💡 Recommendations:')
+        for rec in recommendations:
+            print(f'  • {rec}')
+        print()
 
 
 def handle_config_reset(args) -> None:

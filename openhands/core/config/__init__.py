@@ -16,6 +16,9 @@ from openhands.core.config.layered_config_loader import (
     get_config,
     get_config_loader,
     load_config,
+    requires_restart,
+    reset_restart_flag,
+    update_config,
 )
 from openhands.core.config.llm_config import LLMConfig
 from openhands.core.config.mcp_config import MCPConfig
@@ -48,6 +51,9 @@ __all__ = [
     'get_config_loader',
     'load_config',
     'get_config',
+    'update_config',
+    'requires_restart',
+    'reset_restart_flag',
     'load_openhands_config',
     'load_from_env',
     'load_from_toml',

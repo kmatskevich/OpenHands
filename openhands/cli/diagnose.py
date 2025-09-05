@@ -4,9 +4,7 @@ import json
 import sys
 from typing import Any
 
-from prompt_toolkit import print_formatted_text
-from prompt_toolkit.formatted_text import HTML
-
+# Removed prompt_toolkit dependency for compatibility
 from openhands.core.config import load_openhands_config
 from openhands.core.logger import openhands_logger as logger
 from openhands.server.routes.diagnostics import (
@@ -55,7 +53,7 @@ def run_diagnose_command(args) -> None:
             }
             print(json.dumps(error_response, indent=2))
         else:
-            print_formatted_text(HTML(f'<red>Error: {e}</red>'))
+            print(f'Error: {e}')
         sys.exit(2)
 
 
@@ -193,8 +191,8 @@ def print_human_readable_diagnostics(
     diagnostics: dict[str, Any], verbose: bool = False
 ) -> None:
     """Print diagnostics in human-readable format."""
-    print_formatted_text(HTML('<b>OpenHands Diagnostics</b>'))
-    print_formatted_text(HTML('<b>===================</b>'))
+    print('OpenHands Diagnostics')
+    print('===================')
     print()
 
     # Runtime section
@@ -202,10 +200,10 @@ def print_human_readable_diagnostics(
     print_section_header('Runtime')
     print_status_line('Kind', runtime.get('kind', 'unknown'))
     if runtime.get('requires_restart'):
-        print_formatted_text(HTML('<yellow>⚠ Restart required</yellow>'))
+        print('⚠ Restart required')
         print_restart_guidance(runtime.get('kind'))
     else:
-        print_formatted_text(HTML('<green>✓ No restart needed</green>'))
+        print('✓ No restart needed')
     print()
 
     # Paths section
@@ -220,7 +218,7 @@ def print_human_readable_diagnostics(
     memory = diagnostics.get('memory', {})
     print_section_header('Project Memory')
     if memory.get('connected'):
-        print_formatted_text(HTML('<green>✓ Connected</green>'))
+        print('✓ Connected')
         print_status_line('Backend', memory.get('backend', 'unknown'))
         print_status_line('Database', memory.get('db_path', 'unknown'))
         print_status_line('Events', str(memory.get('events_count', 0)))
@@ -228,9 +226,7 @@ def print_human_readable_diagnostics(
         if memory.get('last_event_ts'):
             print_status_line('Last Event', memory.get('last_event_ts'))
     else:
-        print_formatted_text(
-            HTML('<yellow>⚠ Not available (Docker runtime or not initialized)</yellow>')
-        )
+        print(('⚠ Not available (Docker runtime or not initialized)'))
     print()
 
     # Validation section
@@ -240,17 +236,17 @@ def print_human_readable_diagnostics(
     warnings = validation.get('warnings', [])
 
     if errors:
-        print_formatted_text(HTML('<red>✗ Errors found:</red>'))
+        print('✗ Errors found:')
         for error in errors:
-            print_formatted_text(HTML(f'  <red>• {error}</red>'))
+            print(f'  • {error}')
 
     if warnings:
-        print_formatted_text(HTML('<yellow>⚠ Warnings:</yellow>'))
+        print('⚠ Warnings:')
         for warning in warnings:
-            print_formatted_text(HTML(f'  <yellow>• {warning}</yellow>'))
+            print(f'  • {warning}')
 
     if not errors and not warnings:
-        print_formatted_text(HTML('<green>✓ No issues found</green>'))
+        print('✓ No issues found')
     print()
 
     # Environment section
@@ -258,11 +254,11 @@ def print_human_readable_diagnostics(
     print_section_header('Environment')
     overrides = env.get('openhands_overrides', [])
     if overrides:
-        print_formatted_text(HTML('<yellow>Environment overrides detected:</yellow>'))
+        print('Environment overrides detected:')
         for override in overrides:
-            print_formatted_text(HTML(f'  • {override}'))
+            print(f'  • {override}')
     else:
-        print_formatted_text(HTML('<green>✓ No environment overrides</green>'))
+        print('✓ No environment overrides')
     print()
 
     # Versions section
@@ -279,33 +275,25 @@ def print_human_readable_diagnostics(
     # Verbose information
     if verbose:
         print_section_header('Verbose Details')
-        print_formatted_text(HTML('<dim>Full diagnostics data:</dim>'))
+        print('Full diagnostics data:')
         print(json.dumps(diagnostics, indent=2))
 
 
 def print_section_header(title: str) -> None:
     """Print a section header."""
-    print_formatted_text(HTML(f'<b><u>{title}</u></b>'))
+    print(f'{title}')
 
 
 def print_status_line(label: str, value: str) -> None:
     """Print a status line with label and value."""
-    print_formatted_text(HTML(f'  <b>{label}:</b> {value}'))
+    print(f'  {label}: {value}')
 
 
 def print_restart_guidance(runtime_kind: str) -> None:
     """Print restart guidance based on runtime kind."""
     if runtime_kind == 'docker':
-        print_formatted_text(
-            HTML('  <dim>To restart: docker compose restart openhands</dim>')
-        )
+        print('  To restart: docker compose restart openhands')
     elif runtime_kind == 'local':
-        print_formatted_text(
-            HTML(
-                '  <dim>To restart: Stop the current process and run openhands again</dim>'
-            )
-        )
+        print('  To restart: Stop the current process and run openhands again')
     else:
-        print_formatted_text(
-            HTML('  <dim>Restart method depends on how OpenHands was started</dim>')
-        )
+        print('  Restart method depends on how OpenHands was started')

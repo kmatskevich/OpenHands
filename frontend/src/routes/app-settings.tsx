@@ -18,6 +18,11 @@ import { retrieveAxiosErrorMessage } from "#/utils/retrieve-axios-error-message"
 import { AppSettingsInputsSkeleton } from "#/components/features/settings/app-settings/app-settings-inputs-skeleton";
 import { useConfig } from "#/hooks/query/use-config";
 import { parseMaxBudgetPerTask } from "#/utils/settings-utils";
+import { RuntimeSelector } from "#/components/features/settings/runtime-selector";
+import { RestartBanner } from "#/components/features/settings/restart-banner";
+import { useFullConfig } from "#/hooks/query/use-full-config";
+import { useUpdateConfig } from "#/hooks/mutation/use-update-config";
+import { useFolderPicker } from "#/hooks/use-folder-picker";
 
 function AppSettingsScreen() {
   const { t } = useTranslation();
@@ -25,6 +30,9 @@ function AppSettingsScreen() {
   const { mutate: saveSettings, isPending } = useSaveSettings();
   const { data: settings, isLoading } = useSettings();
   const { data: config } = useConfig();
+  const { data: fullConfig } = useFullConfig();
+  const { mutate: updateConfig } = useUpdateConfig();
+  const { pickFolder } = useFolderPicker();
 
   const [languageInputHasChanged, setLanguageInputHasChanged] =
     React.useState(false);
@@ -48,6 +56,76 @@ function AppSettingsScreen() {
     React.useState(false);
   const [gitUserEmailHasChanged, setGitUserEmailHasChanged] =
     React.useState(false);
+
+  // Runtime-related state
+  const [currentRuntime, setCurrentRuntime] = React.useState<"docker" | "local">("docker");
+  const [showRestartBanner, setShowRestartBanner] = React.useState(false);
+
+  // Load current runtime from config
+  React.useEffect(() => {
+    if (fullConfig?.runtime?.environment) {
+      setCurrentRuntime(fullConfig.runtime.environment as "docker" | "local");
+    }
+  }, [fullConfig]);
+
+  const handleRuntimeChange = async (newRuntime: "docker" | "local") => {
+    try {
+      if (newRuntime === "local") {
+        // Check if project_root is already set
+        const hasProjectRoot = fullConfig?.runtime?.local?.project_root;
+
+        if (!hasProjectRoot) {
+          // Open folder picker
+          const result = await pickFolder();
+          if (result.error) {
+            displayErrorToast(result.error);
+            return;
+          }
+          if (!result.path) {
+            // User cancelled
+            return;
+          }
+
+          // Update config with local runtime and project root
+          await updateConfig({
+            runtime: {
+              environment: "local",
+              local: {
+                project_root: result.path
+              }
+            }
+          });
+
+          // Always show restart banner for runtime changes
+          setShowRestartBanner(true);
+        } else {
+          // Just switch to local runtime
+          await updateConfig({
+            runtime: {
+              environment: "local"
+            }
+          });
+
+          setShowRestartBanner(true);
+        }
+      } else {
+        // Switch to Docker runtime
+        await updateConfig({
+          runtime: {
+            environment: "docker"
+          }
+        });
+
+        setShowRestartBanner(true);
+      }
+
+      setCurrentRuntime(newRuntime);
+      displaySuccessToast("Runtime updated successfully");
+    } catch (error) {
+      const errorMessage = retrieveAxiosErrorMessage(error as any);
+      displayErrorToast(errorMessage || "Failed to update runtime");
+    }
+  };
 
   const formAction = (formData: FormData) => {
     const languageLabel = formData.get("language-input")?.toString();
@@ -188,6 +266,19 @@ function AppSettingsScreen() {
       {shouldBeLoading && <AppSettingsInputsSkeleton />}
       {!shouldBeLoading && (
         <div className="p-9 flex flex-col gap-6">
+          {showRestartBanner && (
+            <RestartBanner
+              runtime={currentRuntime}
+              onDismiss={() => setShowRestartBanner(false)}
+            />
+          )}
+
+          <RuntimeSelector
+            value={currentRuntime}
+            onChange={handleRuntimeChange}
+            disabled={isPending}
+          />
+
           <LanguageInput
             name="language-input"
             defaultKey={settings.LANGUAGE}

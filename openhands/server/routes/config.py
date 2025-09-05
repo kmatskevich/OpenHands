@@ -1,8 +1,8 @@
 """Configuration management REST API endpoints."""
 
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, status
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
@@ -21,22 +21,22 @@ app = APIRouter(prefix='/api/config', dependencies=get_dependencies())
 
 class ConfigResponse(BaseModel):
     """Response model for configuration data."""
-    
-    config: Dict[str, Any]
-    sources: Dict[str, Dict[str, Any]]
+
+    config: dict[str, Any]
+    sources: dict[str, dict[str, Any]]
     requires_restart: bool
 
 
 class ConfigUpdateRequest(BaseModel):
     """Request model for configuration updates."""
-    
-    changes: Dict[str, Any]
+
+    changes: dict[str, Any]
     source: str = 'user'
 
 
 class ConfigUpdateResponse(BaseModel):
     """Response model for configuration updates."""
-    
+
     success: bool
     requires_restart: bool
     message: str
@@ -44,7 +44,7 @@ class ConfigUpdateResponse(BaseModel):
 
 class ConfigValidationResponse(BaseModel):
     """Response model for configuration validation."""
-    
+
     valid: bool
     errors: list[str]
     warnings: list[str]
@@ -52,14 +52,14 @@ class ConfigValidationResponse(BaseModel):
 
 class ConfigDiagnosticsResponse(BaseModel):
     """Response model for configuration diagnostics."""
-    
+
     config_path: Optional[str]
-    sources: Dict[str, Dict[str, Any]]
+    sources: dict[str, dict[str, Any]]
     cold_keys: list[str]
     hot_keys: list[str]
     requires_restart: bool
-    environment_overrides: Dict[str, Any]
-    cli_overrides: Dict[str, Any]
+    environment_overrides: dict[str, Any]
+    cli_overrides: dict[str, Any]
 
 
 @app.get(
@@ -74,10 +74,10 @@ async def get_configuration() -> ConfigResponse | JSONResponse:
     try:
         loader = get_config_loader()
         config = get_config()
-        
+
         # Convert config to dictionary for JSON serialization
         config_dict = config.model_dump()
-        
+
         return ConfigResponse(
             config=config_dict,
             sources=loader.get_source_info(),
@@ -109,18 +109,16 @@ async def update_configuration(
         if request.source not in valid_sources:
             return JSONResponse(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                content={
-                    'error': f'Invalid source. Must be one of: {valid_sources}'
-                },
+                content={'error': f'Invalid source. Must be one of: {valid_sources}'},
             )
-        
+
         # Update configuration
         needs_restart = update_config(request.changes, request.source)
-        
+
         message = 'Configuration updated successfully'
         if needs_restart:
             message += '. Restart required for changes to take effect.'
-        
+
         return ConfigUpdateResponse(
             success=True,
             requires_restart=needs_restart,
@@ -148,13 +146,13 @@ async def update_configuration(
     },
 )
 async def validate_configuration(
-    config_data: Dict[str, Any],
+    config_data: dict[str, Any],
 ) -> ConfigValidationResponse | JSONResponse:
     """Validate configuration data without applying it."""
     try:
         loader = get_config_loader()
         is_valid, errors, warnings = loader.validate_config(config_data)
-        
+
         return ConfigValidationResponse(
             valid=is_valid,
             errors=errors,
@@ -180,7 +178,7 @@ async def get_configuration_diagnostics() -> JSONResponse:
     try:
         loader = get_config_loader()
         diagnostics = loader.get_diagnostics()
-        
+
         return JSONResponse(
             status_code=status.HTTP_200_OK,
             content=diagnostics,
@@ -228,9 +226,9 @@ async def get_configuration_schema() -> JSONResponse:
     """Get the configuration schema for validation and documentation."""
     try:
         from openhands.core.config.openhands_config import OpenHandsConfig
-        
+
         schema = OpenHandsConfig.model_json_schema()
-        
+
         return JSONResponse(
             status_code=status.HTTP_200_OK,
             content=schema,

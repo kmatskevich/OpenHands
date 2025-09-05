@@ -41,8 +41,11 @@ class LayeredConfigLoader:
     # Cold keys that require restart when changed
     COLD_KEYS = {
         'runtime',
-        'runtime.environment',
-        'runtime.local.project_root',
+        'runtime_config',
+        'runtime_config.environment',
+        'runtime_config.local.project_root',
+        'runtime_config.local.mount_host_prefix',
+        'runtime_config.local.mount_container_prefix',
         'sandbox.base_container_image',
         'sandbox.runtime_container_image',
         'sandbox.platform',
@@ -164,45 +167,50 @@ enable_cmd = true
     def load_env_config(self) -> ConfigSource:
         """Load configuration from environment variables."""
         source = ConfigSource('env')
-        
+
         # Collect OPENHANDS_* environment variables
-        env_data = {}
+        env_data: dict[str, Any] = {}
         for key, value in os.environ.items():
             if key.startswith('OPENHANDS_'):
                 # Convert OPENHANDS_RUNTIME to runtime, OPENHANDS_LLM_MODEL to llm.model, etc.
                 config_key = key[10:].lower()  # Remove OPENHANDS_ prefix
-                
+
                 # Handle nested keys like LLM_MODEL -> llm.model
                 if '_' in config_key:
                     parts = config_key.split('_', 1)
                     section = parts[0]
                     field = parts[1]
-                    
+
                     if section not in env_data:
                         env_data[section] = {}
-                    env_data[section][field] = value
+                    if isinstance(env_data[section], dict):
+                        env_data[section][field] = value
                 else:
                     env_data[config_key] = value
-        
+
         source.data = env_data
         source.loaded = bool(env_data)
         self._env_overrides = env_data
-        
+
         if source.loaded:
-            logger.openhands_logger.debug(f'Loaded {len(env_data)} environment overrides')
-        
+            logger.openhands_logger.debug(
+                f'Loaded {len(env_data)} environment overrides'
+            )
+
         return source
 
-    def load_cli_config(self, cli_args: Optional[dict[str, Any]] = None) -> ConfigSource:
+    def load_cli_config(
+        self, cli_args: Optional[dict[str, Any]] = None
+    ) -> ConfigSource:
         """Load configuration from CLI arguments."""
         source = ConfigSource('cli')
-        
+
         if cli_args:
             source.data = cli_args.copy()
             source.loaded = True
             self._cli_overrides = cli_args
             logger.openhands_logger.debug(f'Loaded {len(cli_args)} CLI overrides')
-        
+
         return source
 
     def is_cold_key(self, key_path: str) -> bool:
@@ -213,6 +221,7 @@ enable_cmd = true
 
     def check_requires_restart(self, changes: dict[str, Any]) -> bool:
         """Check if any changes require a restart."""
+
         def check_nested(data: dict[str, Any], prefix: str = '') -> bool:
             for key, value in data.items():
                 # Handle special case for 'core' section - map to root level
@@ -220,8 +229,8 @@ enable_cmd = true
                     if check_nested(value, ''):
                         return True
                 else:
-                    full_key = f"{prefix}.{key}" if prefix else key
-                    
+                    full_key = f'{prefix}.{key}' if prefix else key
+
                     if isinstance(value, dict):
                         if check_nested(value, full_key):
                             return True
@@ -229,7 +238,7 @@ enable_cmd = true
                         if self.is_cold_key(full_key):
                             return True
             return False
-        
+
         return check_nested(changes)
 
     def merge_configs(
@@ -296,11 +305,14 @@ enable_cmd = true
                             env_vars[f'{key.upper()}_{subkey.upper()}'] = str(subvalue)
                     else:
                         env_vars[key.upper()] = str(value)
-                
+
                 from openhands.core.config.utils import load_from_env
+
                 load_from_env(self._config, env_vars)
             except Exception as e:
-                logger.openhands_logger.warning(f'Failed to apply environment overrides: {e}')
+                logger.openhands_logger.warning(
+                    f'Failed to apply environment overrides: {e}'
+                )
 
         # Apply CLI overrides (highest precedence)
         if self._sources['cli'].loaded and self._sources['cli'].data:
@@ -338,23 +350,23 @@ enable_cmd = true
 
     def update_config(self, changes: dict[str, Any], source: str = 'user') -> bool:
         """Update configuration with new values.
-        
+
         Args:
             changes: Dictionary of configuration changes
             source: Source of the changes ('user', 'env', 'cli')
-            
+
         Returns:
             True if changes require restart, False otherwise
         """
         # Check if any changes require restart
         needs_restart = self.check_requires_restart(changes)
-        
+
         if needs_restart:
             self._requires_restart = True
             logger.openhands_logger.info(
                 'Configuration changes require restart. Please restart the application.'
             )
-        
+
         # Apply changes based on source
         if source == 'user':
             # Update user config file
@@ -365,11 +377,11 @@ enable_cmd = true
         elif source == 'cli':
             # Update CLI overrides
             self._cli_overrides.update(changes)
-        
+
         # Reload configuration if not requiring restart
         if not needs_restart:
             self._reload_hot_config()
-        
+
         return needs_restart
 
     def _update_user_config_file(self, changes: dict[str, Any]) -> None:
@@ -377,23 +389,25 @@ enable_cmd = true
         user_config_path = self.get_user_config_path_resolved()
         if not user_config_path:
             return
-        
+
         try:
             # Load current user config
             current_config = {}
             if os.path.exists(user_config_path):
                 with open(user_config_path, 'r', encoding='utf-8') as f:
                     current_config = toml.load(f)
-            
+
             # Merge changes
             updated_config = self.merge_configs(current_config, changes)
-            
+
             # Write back to file
             with open(user_config_path, 'w', encoding='utf-8') as f:
                 toml.dump(updated_config, f)
-            
-            logger.openhands_logger.debug(f'Updated user config file: {user_config_path}')
-            
+
+            logger.openhands_logger.debug(
+                f'Updated user config file: {user_config_path}'
+            )
+
         except Exception as e:
             logger.openhands_logger.error(f'Failed to update user config file: {e}')
 
@@ -409,22 +423,24 @@ enable_cmd = true
     def reset_restart_flag(self) -> None:
         """Reset the requires restart flag (call after restart)."""
         self._requires_restart = False
-    
-    def validate_config(self, config_data: Optional[dict] = None) -> tuple[bool, list[str], list[str]]:
+
+    def validate_config(
+        self, config_data: Optional[dict] = None
+    ) -> tuple[bool, list[str], list[str]]:
         """Validate configuration data.
-        
+
         Args:
             config_data: Configuration data to validate. If None, validates current config.
-            
+
         Returns:
             Tuple of (is_valid, errors, warnings)
         """
         if config_data is None:
             config_data = self.get_config().model_dump()
-        
+
         validator = ConfigValidator()
         return validator.validate(config_data)
-    
+
     def get_diagnostics(self) -> dict[str, Any]:
         """Get comprehensive configuration diagnostics."""
         diagnostics = ConfigDiagnostics(self)

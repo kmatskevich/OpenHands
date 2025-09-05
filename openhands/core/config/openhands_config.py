@@ -16,6 +16,7 @@ from openhands.core.config.extended_config import ExtendedConfig
 from openhands.core.config.kubernetes_config import KubernetesConfig
 from openhands.core.config.llm_config import LLMConfig
 from openhands.core.config.mcp_config import MCPConfig
+from openhands.core.config.runtime_config import RuntimeConfig
 from openhands.core.config.sandbox_config import SandboxConfig
 from openhands.core.config.security_config import SecurityConfig
 
@@ -67,7 +68,8 @@ class OpenHandsConfig(BaseModel):
     sandbox: SandboxConfig = Field(default_factory=SandboxConfig)
     security: SecurityConfig = Field(default_factory=SecurityConfig)
     extended: ExtendedConfig = Field(default_factory=lambda: ExtendedConfig({}))
-    runtime: str = Field(default='docker')
+    runtime: str = Field(default='docker')  # Legacy field for backward compatibility
+    runtime_config: RuntimeConfig = Field(default_factory=RuntimeConfig)
     file_store: str = Field(default='local')
     file_store_path: str = Field(default='~/.openhands')
     file_store_web_hook_url: str | None = Field(default=None)

@@ -223,8 +223,10 @@ def get_cli_parser() -> argparse.ArgumentParser:
         '--sources', action='store_true', help='Show configuration sources'
     )
     show_parser.add_argument(
-        '--format', choices=['json', 'yaml', 'toml'], default='yaml',
-        help='Output format (default: yaml)'
+        '--format',
+        choices=['json', 'yaml', 'toml'],
+        default='yaml',
+        help='Output format (default: yaml)',
     )
 
     # config get
@@ -234,36 +236,31 @@ def get_cli_parser() -> argparse.ArgumentParser:
     get_parser.add_argument('key', help='Configuration key (e.g., runtime, llm.model)')
 
     # config set
-    set_parser = config_subparsers.add_parser(
-        'set', help='Set a configuration value'
-    )
+    set_parser = config_subparsers.add_parser('set', help='Set a configuration value')
     set_parser.add_argument('key', help='Configuration key')
     set_parser.add_argument('value', help='Configuration value')
     set_parser.add_argument(
-        '--source', choices=['user', 'env'], default='user',
-        help='Configuration source to update (default: user)'
+        '--source',
+        choices=['user', 'env'],
+        default='user',
+        help='Configuration source to update (default: user)',
     )
 
     # config validate
     validate_parser = config_subparsers.add_parser(
         'validate', help='Validate configuration'
     )
-    validate_parser.add_argument(
-        '--file', help='Validate a specific config file'
-    )
+    validate_parser.add_argument('--file', help='Validate a specific config file')
 
     # config diagnostics
-    diagnostics_parser = config_subparsers.add_parser(
-        'diagnostics', help='Show configuration diagnostics'
-    )
+    config_subparsers.add_parser('diagnostics', help='Show configuration diagnostics')
 
     # config reset
     reset_parser = config_subparsers.add_parser(
         'reset', help='Reset configuration to defaults'
     )
     reset_parser.add_argument(
-        '--confirm', action='store_true',
-        help='Confirm the reset operation'
+        '--confirm', action='store_true', help='Confirm the reset operation'
     )
 
     return parser

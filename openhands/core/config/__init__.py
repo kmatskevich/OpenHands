@@ -35,7 +35,7 @@ from openhands.core.config.utils import (
     parse_arguments,
     setup_config_from_args,
 )
-from openhands.core.config.validation import ConfigValidator, ConfigDiagnostics
+from openhands.core.config.validation import ConfigDiagnostics, ConfigValidator
 
 __all__ = [
     'OH_DEFAULT_AGENT',

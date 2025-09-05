@@ -47,6 +47,7 @@ def main():
         run_cli_command(args)
     elif args.command == 'config':
         from openhands.cli.config_commands import handle_config_command
+
         handle_config_command(args)
     else:
         parser.print_help()

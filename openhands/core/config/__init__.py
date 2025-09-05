@@ -11,6 +11,12 @@ from openhands.core.config.config_utils import (
     get_field_info,
 )
 from openhands.core.config.extended_config import ExtendedConfig
+from openhands.core.config.layered_config_loader import (
+    LayeredConfigLoader,
+    get_config,
+    get_config_loader,
+    load_config,
+)
 from openhands.core.config.llm_config import LLMConfig
 from openhands.core.config.mcp_config import MCPConfig
 from openhands.core.config.openhands_config import OpenHandsConfig
@@ -38,6 +44,10 @@ __all__ = [
     'SandboxConfig',
     'SecurityConfig',
     'ExtendedConfig',
+    'LayeredConfigLoader',
+    'get_config_loader',
+    'load_config',
+    'get_config',
     'load_openhands_config',
     'load_from_env',
     'load_from_toml',

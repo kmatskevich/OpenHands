@@ -1,0 +1,7 @@
+# OpenHands Project Memory
+# This directory contains local project memory database and should not be committed
+.openhands/.memory/
+
+# OpenHands configuration (optional - uncomment if you don't want to share config)
+# .openhands/config.toml
+# .openhands/microagents/

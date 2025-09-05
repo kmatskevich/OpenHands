@@ -81,6 +81,7 @@ COMMANDS = {
     '/help': 'Display available commands',
     '/init': 'Initialize a new repository',
     '/status': 'Display conversation details and usage metrics',
+    '/memory': 'Display project memory status and statistics',
     '/new': 'Create a new conversation',
     '/settings': 'Display and modify current settings',
     '/resume': 'Resume the agent when paused',

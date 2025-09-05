@@ -31,6 +31,7 @@ from openhands.controller.state.state import State
 from openhands.controller.state.state_tracker import StateTracker
 from openhands.controller.stuck import StuckDetector
 from openhands.core.config import AgentConfig, LLMConfig
+from openhands.memory.project_memory import ProjectMemory, create_project_memory
 from openhands.core.exceptions import (
     AgentStuckInLoopError,
     FunctionCallNotExistsError,
@@ -111,6 +112,7 @@ class AgentController:
     _pending_action_info: tuple[Action, float] | None = None  # (action, timestamp)
     _closed: bool = False
     _cached_first_user_message: MessageAction | None = None
+    project_memory: ProjectMemory | None = None
 
     def __init__(
         self,
@@ -131,6 +133,8 @@ class AgentController:
         status_callback: Callable | None = None,
         replay_events: list[Event] | None = None,
         security_analyzer: 'SecurityAnalyzer | None' = None,
+        project_root: str | None = None,
+        runtime_env: str = 'docker',
     ):
         """Initializes a new instance of the AgentController class.
 
@@ -197,6 +201,14 @@ class AgentController:
 
         # security analyzer for direct access
         self.security_analyzer = security_analyzer
+
+        # Initialize project memory for local runtime
+        if project_root and runtime_env == 'local':
+            self.project_memory = create_project_memory(project_root, runtime_env)
+            if self.project_memory:
+                logger.info('Project memory initialized successfully')
+            else:
+                logger.warning('Failed to initialize project memory')
 
         # Add the system message to the event stream
         self._add_system_message()
@@ -970,6 +982,9 @@ class AgentController:
             # Create and log metrics for frontend display
             self._prepare_metrics_for_frontend(action)
 
+            # Log action to project memory if available
+            self._log_action_to_memory(action)
+
             self.event_stream.add_event(action, action._source)  # type: ignore [attr-defined]
 
         log_level = 'info' if LOG_ALL_EVENTS else 'debug'
@@ -1125,6 +1140,56 @@ class AgentController:
             f'{accumulated_usage.completion_tokens}',
             extra={'msg_type': 'METRICS'},
         )
+
+    def _log_action_to_memory(self, action: Action) -> None:
+        """Log action to project memory if available.
+
+        Args:
+            action: The action to log
+        """
+        if not self.project_memory or not self.project_memory.is_connected():
+            return
+
+        # Determine action kind for memory logging
+        action_kind = 'unknown'
+        if hasattr(action, 'action'):
+            action_kind = action.action
+        else:
+            action_kind = type(action).__name__.lower().replace('action', '')
+
+        # Create summary based on action type
+        summary = f'{action_kind}'
+        if hasattr(action, 'command'):
+            summary = f'{action_kind}: {action.command[:100]}'
+        elif hasattr(action, 'path'):
+            summary = f'{action_kind}: {action.path}'
+        elif hasattr(action, 'content'):
+            content_preview = action.content[:100] if action.content else ''
+            summary = f'{action_kind}: {content_preview}'
+
+        # Log specific action types that are relevant for memory
+        memory_relevant_actions = {
+            'run',
+            'edit',
+            'read',
+            'write',
+            'create',
+            'delete',
+            'browse',
+            'search',
+            'compile',
+            'build',
+            'test',
+        }
+
+        if any(keyword in action_kind.lower() for keyword in memory_relevant_actions):
+            details = None
+            if hasattr(action, 'thought') and action.thought:
+                details = action.thought
+
+            self.project_memory.log_event(
+                kind=action_kind, summary=summary, details=details
+            )
 
     def __repr__(self) -> str:
         pending_action_info = '<none>'

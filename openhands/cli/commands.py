@@ -50,6 +50,7 @@ from openhands.events.action import (
     MessageAction,
 )
 from openhands.events.stream import EventStream
+from openhands.memory.project_memory import ProjectMemory
 from openhands.storage.settings.file_settings_store import FileSettingsStore
 
 
@@ -151,6 +152,8 @@ async def handle_commands(
         )
     elif command == '/status':
         handle_status_command(usage_metrics, sid)
+    elif command == '/memory':
+        handle_memory_command(config)
     elif command == '/new':
         close_repl, new_session_requested = handle_new_command(
             config, event_stream, usage_metrics, sid
@@ -234,6 +237,58 @@ async def handle_init_command(
 
 def handle_status_command(usage_metrics: UsageMetrics, sid: str) -> None:
     display_status(usage_metrics, sid)
+
+
+def handle_memory_command(config: OpenHandsConfig) -> None:
+    """Handle the /memory command to show project memory status."""
+    print_formatted_text(HTML('<gold>Project Memory Status</gold>'))
+    print_formatted_text('=' * 50)
+
+    if config.runtime != 'local':
+        print_formatted_text(
+            HTML(
+                f'<red>Project memory is only available for local runtime (current: {config.runtime})</red>'
+            )
+        )
+        return
+
+    workspace_base = getattr(config, 'workspace_base', './workspace')
+
+    try:
+        project_memory = ProjectMemory(workspace_base, 'local')
+        status = project_memory.get_status()
+
+        print_formatted_text(
+            HTML(f'<green>Database Path:</green> {status.get("db_path", "Unknown")}')
+        )
+        print_formatted_text(
+            HTML(f'<green>Connected:</green> {status.get("connected", False)}')
+        )
+        print_formatted_text(
+            HTML(
+                f'<green>Schema Version:</green> {status.get("schema_version", "Unknown")}'
+            )
+        )
+        print_formatted_text(
+            HTML(f'<green>Event Count:</green> {status.get("event_count", 0)}')
+        )
+        print_formatted_text(
+            HTML(f'<green>File Count:</green> {status.get("file_count", 0)}')
+        )
+
+        if status.get('connected'):
+            print_formatted_text(
+                HTML('<green>✓ Project memory is working correctly</green>')
+            )
+        else:
+            print_formatted_text(HTML('<red>✗ Project memory is not connected</red>'))
+
+    except Exception as e:
+        print_formatted_text(
+            HTML(f'<red>Error accessing project memory: {str(e)}</red>')
+        )
+
+    print_formatted_text('')
 
 
 def handle_new_command(
